@@ -113,6 +113,8 @@ export const users = pgTable("users", {
   passwordHash: varchar("password_hash", { length: 255 }).notNull(),
   role: userRoleEnum("role").notNull(),
   nip: varchar("nip", { length: 40 }),
+  /** NIK (Nomor Induk Kependudukan, 16 digit) — diisi dari `getGtk` Dapodik. Dipakai sebagai kunci pencocokan yang stabil & manusiawi (bisa diketik ulang tanpa salin-tempel UUID) untuk fitur import Excel Penugasan Guru Wali (§5.5/§7.2 ARCHITECTURE.md), berbeda dari `dapodikPtkId` yang dipakai sinkronisasi otomatis. */
+  nik: varchar("nik", { length: 20 }).unique(),
   phone: varchar("phone", { length: 30 }),
   isActive: boolean("is_active").default(true).notNull(),
   /** `ptk_id` dari Dapodik (endpoint `getPengguna`) — kunci pencocokan sinkronisasi GTK/PTK, lihat `dapodik-sync-job.ts`. Null untuk akun yang dibuat manual. */

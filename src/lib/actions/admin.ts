@@ -6,6 +6,7 @@ import { schoolYears, classes, students, users, guruWaliAssignments, type UserRo
 import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
+import { generateTempPassword } from "@/lib/temp-password";
 
 async function requireAdmin() {
   const session = await auth();
@@ -201,4 +202,34 @@ export async function endGuruWaliAssignmentAction(formData: FormData) {
     .where(eq(guruWaliAssignments.id, assignmentId));
 
   revalidatePath("/dashboard/admin");
+}
+
+type ResetPasswordState = { error?: string; tempPassword?: string } | undefined;
+
+/**
+ * Reset password akun mana pun jadi password sementara baru, ditampilkan
+ * SEKALI di respons ini (tidak pernah disimpan sebagai plaintext — hanya
+ * bcrypt hash-nya yang masuk DB). Dipakai kapan saja seorang guru/pengguna
+ * lapor lupa password, termasuk akun hasil auto-provisioning sinkronisasi
+ * Dapodik (§5.5 ARCHITECTURE.md) — sengaja "reset-on-demand", BUKAN
+ * penyimpanan password permanen yang bisa dilihat admin kapan saja, supaya
+ * kebocoran database/sesi admin tidak sekaligus membocorkan semua password.
+ */
+export async function resetUserPasswordAction(_prevState: ResetPasswordState, formData: FormData): Promise<ResetPasswordState> {
+  const admin = await requireAdmin();
+
+  const userId = formData.get("userId");
+  if (typeof userId !== "string" || !userId) return { error: "Pengguna tidak valid." };
+
+  const [target] = await db.select({ id: users.id, schoolId: users.schoolId }).from(users).where(eq(users.id, userId));
+  if (!target) return { error: "Pengguna tidak ditemukan." };
+  await assertSameSchool(target.schoolId, admin.schoolId);
+
+  const tempPassword = generateTempPassword();
+  const passwordHash = await bcrypt.hash(tempPassword, 10);
+
+  await db.update(users).set({ passwordHash, mustChangePassword: true }).where(eq(users.id, userId));
+
+  revalidatePath("/dashboard/admin");
+  return { tempPassword };
 }

@@ -61,6 +61,21 @@ export interface DapodikClientConfig {
    */
   cfAccessClientId?: string | null;
   cfAccessClientSecret?: string | null;
+  /**
+   * Kode semester Dapodik, mis. "20261" (tahun ajaran 2026 semester ganjil).
+   * OPSIONAL — instalasi yang diuji (SMKN 2 Malinau) terbukti tetap
+   * mengembalikan data lengkap tanpa param ini (default ke semester aktif di
+   * sisi server). Ditemukan lewat analisis kode sumber e-Rapor SMK 8
+   * (eraporsmk/erapor8, 2026-09-22) yang SELALU menyertakan param ini di
+   * setiap panggilan — dimasukkan di sini untuk kompatibilitas ke depan/
+   * instalasi Dapodik lain yang mungkin mewajibkannya, TAPI SENGAJA tidak
+   * di-set otomatis oleh `dapodik-sync-job.ts` (SIGW tidak punya cara andal
+   * menghitung nilai semester yang benar dari `school_years` — cuma
+   * menyimpan tahun ajaran, bukan ganjil/genap) supaya tidak menebak nilai
+   * yang salah pada instalasi yang sekarang justru sudah terbukti bekerja
+   * tanpa param ini.
+   */
+  semesterId?: string;
 }
 
 export class DapodikError extends Error {
@@ -93,6 +108,7 @@ async function dapodikRequest<T>(
   const base = config.baseUrl.replace(/\/+$/, "");
   const url = new URL(`${base}/${endpoint}`);
   url.searchParams.set("npsn", config.npsn);
+  if (config.semesterId) url.searchParams.set("semester_id", config.semesterId);
   for (const [key, value] of Object.entries(params)) {
     if (value) url.searchParams.set(key, value);
   }
@@ -180,11 +196,24 @@ export interface DapodikPesertaDidik {
 }
 
 /** Skema Rombongan Belajar (Kelas) — verified 2026-09-22. */
+/**
+ * `jenis_rombel` (numerik) vs `jenis_rombel_str` (label tampilan) —
+ * cross-check 2026-09-22 terhadap 44 rombel nyata SMKN 2 Malinau (21 Kelas +
+ * 21 Matapelajaran Pilihan + 2 Ekstrakurikuler) membuktikan keduanya SELALU
+ * konsisten 1:1 (tidak ada satu pun selisih). Kode numeriknya dikonfirmasi
+ * lewat analisis kode sumber e-Rapor SMK 8 (aplikasi resmi, dipakai luas):
+ * `1`=Reguler ("Kelas" di `jenis_rombel_str`), `16`=Matapelajaran Pilihan,
+ * `51`=Ekstrakurikuler. `dapodik-sync-job.ts` memfilter kelas lewat
+ * `jenis_rombel` NUMERIK (bukan string) — kode numerik adalah nilai enum
+ * kanonis Dapodik, lebih tahan terhadap kemungkinan variasi penulisan label
+ * `_str` antar versi/instalasi dibanding string tampilan.
+ */
 export interface DapodikRombonganBelajar {
   rombongan_belajar_id: string;
   nama: string;
   tingkat_pendidikan_id_str?: string;
   semester_id?: string;
+  jenis_rombel?: number | string;
   jenis_rombel_str?: string;
   kurikulum_id_str?: string;
   ptk_id?: string | null;
@@ -236,6 +265,53 @@ export interface DapodikPengguna {
 /** Mengembalikan SELURUH akun pengguna Dapodik dalam satu panggilan. */
 export async function fetchAllPengguna(config: DapodikClientConfig): Promise<DapodikPengguna[]> {
   const { rows } = await dapodikRequest<DapodikPengguna[]>(config, "getPengguna");
+  return Array.isArray(rows) ? rows : [];
+}
+
+/**
+ * Skema GTK (Guru & Tenaga Kependidikan) — endpoint TIDAK terdokumentasi
+ * resmi (nama `get_gtk`/`getGTK` yang beredar tidak cocok; yang TERBUKTI
+ * berfungsi di instalasi yang diuji, 2026-09-22, adalah `getGtk` — huruf "tk"
+ * kecil, persis kapitalisasi ini). Dipakai untuk melengkapi `nip`/`nuptk`
+ * yang TIDAK tersedia lewat `getPengguna` (lihat `dapodik-sync-job.ts`).
+ * `jenis_ptk_id_str` cuma berisi kategori umum ("Guru"/"Tenaga
+ * Kependidikan"/"Kepala Sekolah") — TIDAK ada label "Wali Kelas" di sini,
+ * jadi tidak membantu pemetaan Guru Wali (lihat diskusi terpisah). `ptk_id`
+ * terverifikasi 100% (56/56) bisa di-join ke `ptk_id` milik `getPengguna`.
+ */
+export interface DapodikGtk {
+  ptk_id: string;
+  nama: string;
+  nik?: string | null;
+  nip?: string | null;
+  nuptk?: string | null;
+  jenis_kelamin?: string;
+  tempat_lahir?: string | null;
+  tanggal_lahir?: string | null;
+  /** Kode numerik kategori kepegawaian — lihat referensi `JENIS_PTK_REFERENCE` di bawah. Tidak dipakai untuk keputusan apa pun di SIGW saat ini (role SIGW ditentukan dari `peran_id_str` milik `getPengguna`, bukan dari sini) — disediakan untuk kebutuhan yang belum diketahui di kemudian hari. */
+  jenis_ptk_id?: number | string;
+  jenis_ptk_id_str?: string;
+  status_kepegawaian_id_str?: string;
+  [key: string]: unknown;
+}
+
+/**
+ * Referensi kode numerik `jenis_ptk_id` (dikonfirmasi lewat analisis kode
+ * sumber e-Rapor SMK 8, 2026-09-22) — TIDAK dipakai untuk keputusan apa pun
+ * di SIGW saat ini, cuma referensi kalau suatu saat dibutuhkan klasifikasi
+ * lebih rinci dari `jenis_ptk_id_str` (yang di instalasi SMKN 2 Malinau cuma
+ * berisi 3 kategori: "Guru"/"Tenaga Kependidikan"/"Kepala Sekolah").
+ */
+export const JENIS_PTK_REFERENCE = {
+  guru: [3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 20, 25, 26, 51, 52, 53, 54, 56, 92],
+  tendik: [11, 30, 40, 41, 42, 43, 44, 57, 58, 59, 91, 93],
+  instruktur: [97],
+  asesor: [98],
+} as const;
+
+/** Mengembalikan SELURUH data GTK dalam satu panggilan. */
+export async function fetchAllGtk(config: DapodikClientConfig): Promise<DapodikGtk[]> {
+  const { rows } = await dapodikRequest<DapodikGtk[]>(config, "getGtk");
   return Array.isArray(rows) ? rows : [];
 }
 

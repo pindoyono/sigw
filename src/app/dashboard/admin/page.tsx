@@ -8,7 +8,9 @@ import { CreateSchoolYearForm } from "@/components/dashboard/admin/create-school
 import { CreateClassForm } from "@/components/dashboard/admin/create-class-form";
 import { CreateStudentForm } from "@/components/dashboard/admin/create-student-form";
 import { CreateUserForm } from "@/components/dashboard/admin/create-user-form";
+import { UserList } from "@/components/dashboard/admin/user-list";
 import { CreateAssignmentForm } from "@/components/dashboard/admin/create-assignment-form";
+import { GuruWaliImportForm } from "@/components/dashboard/admin/guru-wali-import-form";
 import { AiProviderConfigForm } from "@/components/dashboard/admin/ai-provider-config-form";
 import { DapodikConfigForm } from "@/components/dashboard/admin/dapodik-config-form";
 import { endGuruWaliAssignmentAction } from "@/lib/actions/admin";
@@ -176,15 +178,10 @@ export default async function AdminPage() {
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <CreateUserForm />
-          <div className="max-h-48 overflow-y-auto border-t border-slate-100 pt-3">
-            <ul className="flex flex-col gap-1 text-xs text-slate-600">
-              {allUsers.map((u) => (
-                <li key={u.id}>
-                  {u.name} · {u.email} · <span className="font-medium">{ROLE_LABEL[u.role]}</span>
-                  {!u.isActive && " · nonaktif"}
-                </li>
-              ))}
-            </ul>
+          <div className="max-h-96 overflow-y-auto border-t border-slate-100 pt-3">
+            <UserList
+              users={allUsers.map((u) => ({ id: u.id, name: u.name, email: u.email, roleLabel: ROLE_LABEL[u.role], isActive: u.isActive }))}
+            />
           </div>
         </CardContent>
       </Card>
@@ -196,6 +193,7 @@ export default async function AdminPage() {
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <CreateAssignmentForm teachers={guruWaliOptions} students={studentOptions} />
+          <GuruWaliImportForm />
           <div className="flex flex-col gap-2 border-t border-slate-100 pt-3">
             {assignmentRows.length === 0 && <p className="text-xs text-slate-400">Belum ada penugasan aktif.</p>}
             {assignmentRows.map((a) => (

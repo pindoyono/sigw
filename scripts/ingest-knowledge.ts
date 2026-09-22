@@ -8,9 +8,17 @@ import { db } from "../src/db";
 import { aiKnowledgeChunks } from "../src/db/schema";
 import { embedText, isUsingRealEmbeddings } from "../src/lib/embeddings";
 
+// `referensi/` SENGAJA berada di LUAR repo app/ (sibling dari app/, bukan di
+// dalamnya — lihat ARCHITECTURE.md §3: "TIDAK dideploy"), jadi dua tingkat
+// naik dari scripts/ (scripts/ -> app/ -> induk app/), bukan satu tingkat.
+// Ditemukan 2026-09-22: sebelumnya `../referensi` cuma naik ke dalam app/
+// sendiri (tempat yang tidak pernah ada foldernya), membuat ingest selalu
+// diam-diam melewati semua file ("tidak ditemukan") meski PDF sumbernya
+// sungguhan ada di mesin — gagal senyap, tidak pernah ketahuan sampai
+// pengujian menyeluruh ini.
 const REFERENCE_DIR = path.resolve(
   __dirname,
-  "../referensi/Perangkat Guru Wali (6)-20260921T033047Z-1-001",
+  "../../referensi/Perangkat Guru Wali (6)-20260921T033047Z-1-001",
 );
 
 const SOURCE_FILES = [
@@ -37,7 +45,16 @@ function chunkText(text: string): string[] {
 async function main() {
   console.log(`Mode embedding: ${isUsingRealEmbeddings() ? "OpenAI (API key terdeteksi)" : "lokal (hashing-trick, offline)"}`);
 
-  const { default: pdfParse } = await import("pdf-parse");
+  // `pdf-parse` v2+ terinstall di proyek ini mengekspor CLASS `PDFParse`
+  // (constructor `{ data }` + method `.getText()`), BUKAN fungsi default
+  // `pdfParse(buffer)` seperti v1.x — ketidakcocokan versi ini sebelumnya
+  // membuat `next build` gagal total (error TS2339 "Property 'default' does
+  // not exist") dan skrip ini akan crash di runtime ("pdfParse is not a
+  // function") kalau benar-benar dijalankan. Diperbaiki 2026-09-22 setelah
+  // ditemukan lewat `bun run build` produksi (bukan cuma `tsc --noEmit`, yang
+  // errornya sempat dianggap "pre-existing, tidak terkait" — ternyata
+  // build-fatal).
+  const { PDFParse } = await import("pdf-parse");
 
   for (const fileName of SOURCE_FILES) {
     const filePath = path.join(REFERENCE_DIR, fileName);
@@ -51,7 +68,9 @@ async function main() {
       continue;
     }
 
-    const parsed = await pdfParse(buffer);
+    const parser = new PDFParse({ data: buffer });
+    const parsed = await parser.getText();
+    await parser.destroy();
     const chunks = chunkText(parsed.text);
     console.log(`  -> ${chunks.length} chunk diekstrak`);
 

@@ -1,12 +1,13 @@
 import { db } from "@/db";
 import { classes, students, studentGuardians, schoolYears, dapodikConfigs, users, type UserRole } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
-import { randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
+import { generateTempPassword } from "@/lib/temp-password";
 import {
   fetchAllPesertaDidik,
   fetchAllRombonganBelajar,
   fetchAllPengguna,
+  fetchAllGtk,
   type DapodikClientConfig,
   type DapodikPesertaDidik,
   type DapodikRombonganBelajar,
@@ -47,10 +48,8 @@ const TEACHER_ROLE_MAP: Record<string, UserRole> = {
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-/** Password sementara acak (bukan turunan apa pun dari Dapodik) — akun wajib menggantinya di login pertama. */
-function generateTempPassword(): string {
-  return randomBytes(9).toString("base64url");
-}
+/** Kode numerik `jenis_rombel` untuk rombel "Kelas" (Reguler) — lihat catatan cross-check di `DapodikRombonganBelajar` (dapodik.ts). */
+const JENIS_ROMBEL_KELAS = 1;
 
 /** "L"/"P" dari Dapodik -> enum `gender` SIGW. */
 function mapGender(kode: string): "laki_laki" | "perempuan" {
@@ -67,6 +66,22 @@ function parseChildOrder(value: string | null | undefined): number | null {
  * Sinkronisasi satu arah: Dapodik -> SIGW (Dapodik sebagai sumber kebenaran
  * untuk field identitas dasar murid & kelas). Kelas dicocokkan lewat
  * `dapodikId` (rombongan_belajar_id), murid dicocokkan lewat `nisn`.
+ *
+ * **Kelas → Wali Kelas**: hanya rombel ber-`jenis_rombel === 1` (numerik —
+ * "Reguler"/"Kelas", lihat catatan cross-check di `DapodikRombonganBelajar`
+ * di `dapodik.ts`) yang disinkronkan sebagai `classes` (rombel "Matapelajaran
+ * Pilihan"/"Ekstrakurikuler" dilewati — `ptk_id`-nya guru pengampu/pembina, bukan wali
+ * kelas). `classes.waliKelasId` ditautkan otomatis dari `rombel.ptk_id`,
+ * dicocokkan ke `users.dapodikPtkId` (guru disinkronkan LEBIH DULU di
+ * langkah 1 supaya id-nya sudah tersedia saat kelas diproses).
+ *
+ * **CATATAN PENTING — "Wali Kelas" Dapodik ≠ "Guru Wali" SIGW**: fungsi ini
+ * HANYA mengisi `classes.waliKelasId` (data administratif kelas, dipetakan
+ * lewat `dapodik.ts` §5.5 ARCHITECTURE.md). Ini TIDAK membuat/mengubah
+ * `guru_wali_assignments` (penugasan pendampingan murid yang jadi inti SIGW)
+ * — itu masih sepenuhnya manual lewat Panel Admin. Keduanya sengaja
+ * dipisahkan sampai ada keputusan produk eksplisit soal apakah/bagaimana
+ * keduanya disatukan (lihat diskusi di riwayat kerja, belum diimplementasikan).
  *
  * Field yang HANYA dikelola di SIGW (chronicIllness, photoUrl, nickname,
  * isActive, dst. — lihat student_profiles) TIDAK disentuh sinkronisasi ini,
@@ -106,11 +121,14 @@ export async function runDapodikSync(schoolId: string, overrideConfig?: DapodikC
     .where(and(eq(schoolYears.schoolId, schoolId), eq(schoolYears.isActive, true)));
   if (!activeYear) throw new Error("Belum ada Tahun Ajaran aktif — tetapkan dulu di Panel Admin sebelum sinkronisasi.");
 
-  const [rombelList, pesertaDidikList, penggunaList] = await Promise.all([
+  const [rombelList, pesertaDidikList, penggunaList, gtkList] = await Promise.all([
     fetchAllRombonganBelajar(clientConfig),
     fetchAllPesertaDidik(clientConfig),
     fetchAllPengguna(clientConfig),
+    fetchAllGtk(clientConfig),
   ]);
+  const nipByPtkId = new Map(gtkList.filter((g) => g.nip).map((g) => [g.ptk_id, g.nip as string]));
+  const nikByPtkId = new Map(gtkList.filter((g) => g.nik).map((g) => [g.ptk_id, g.nik as string]));
 
   const summary: DapodikSyncSummary = {
     classesCreated: 0,
@@ -124,22 +142,40 @@ export async function runDapodikSync(schoolId: string, overrideConfig?: DapodikC
     newTeacherCredentials: [],
   };
 
-  // 1) Sinkronkan kelas (rombongan belajar) dulu, supaya murid bisa langsung ditautkan.
+  // 1) Sinkronkan akun guru (GTK/PTK) DULU — supaya saat kelas diproses di langkah
+  // berikutnya, wali kelasnya (kalau ada) sudah punya `users.id` untuk ditautkan.
+  // Lihat catatan keamanan di TEACHER_ROLE_MAP & DapodikPengguna.
+  const userIdByPtkId = new Map<string, string>();
+  for (const pengguna of penggunaList) {
+    const nip = pengguna.ptk_id ? (nipByPtkId.get(pengguna.ptk_id) ?? null) : null;
+    const nik = pengguna.ptk_id ? (nikByPtkId.get(pengguna.ptk_id) ?? null) : null;
+    const userId = await upsertTeacher(pengguna, schoolId, nip, nik, summary);
+    if (userId && pengguna.ptk_id) userIdByPtkId.set(pengguna.ptk_id, userId);
+  }
+
+  // 2) Sinkronkan kelas — HANYA rombel ber-`jenis_rombel === 1` (numerik, kelas
+  // sungguhan tempat murid terdaftar). Rombel jenis lain ("Matapelajaran Pilihan"
+  // = 16, "Ekstrakurikuler" = 51) juga punya `ptk_id`, tapi itu guru pengampu
+  // mapel/pembina ekskul, BUKAN wali kelas — sengaja tidak disinkronkan sebagai
+  // `classes` SIGW (diverifikasi manual 2026-09-22 terhadap Dapodik SMKN 2
+  // Malinau: 21/44 rombel berjenis 1, dan seluruh 602 murid
+  // `rombongan_belajar_id`-nya menunjuk ke salah satu dari 21 rombel itu — jadi
+  // tidak ada murid yang jadi yatim kelas gara-gara filter ini). Kode numerik
+  // dipakai (bukan `jenis_rombel_str === "Kelas"`) karena itu nilai enum
+  // kanonis Dapodik, terverifikasi 100% konsisten dengan labelnya di instalasi
+  // ini dan dikonfirmasi lewat kode sumber e-Rapor SMK 8.
+  const kelasRombel = rombelList.filter((r) => Number(r.jenis_rombel) === JENIS_ROMBEL_KELAS);
   const classIdByDapodikId = new Map<string, string>();
-  for (const rombel of rombelList) {
-    const classId = await upsertClass(rombel, activeYear.id, summary);
+  for (const rombel of kelasRombel) {
+    const waliKelasId = rombel.ptk_id ? (userIdByPtkId.get(rombel.ptk_id) ?? null) : null;
+    const classId = await upsertClass(rombel, activeYear.id, waliKelasId, summary);
     classIdByDapodikId.set(rombel.rombongan_belajar_id, classId);
   }
 
-  // 2) Sinkronkan murid.
+  // 3) Sinkronkan murid.
   for (const pd of pesertaDidikList) {
     const ok = await upsertStudent(pd, schoolId, classIdByDapodikId, summary);
     if (!ok) summary.studentsSkipped += 1;
-  }
-
-  // 3) Sinkronkan akun guru (GTK/PTK) — lihat catatan keamanan di TEACHER_ROLE_MAP & DapodikPengguna.
-  for (const pengguna of penggunaList) {
-    await upsertTeacher(pengguna, schoolId, summary);
   }
 
   if (!overrideConfig) {
@@ -184,19 +220,20 @@ export async function runAllDapodikSyncs(): Promise<DapodikSyncBatchResult[]> {
 async function upsertClass(
   rombel: DapodikRombonganBelajar,
   schoolYearId: string,
+  waliKelasId: string | null,
   summary: DapodikSyncSummary,
 ): Promise<string> {
   const [existing] = await db.select({ id: classes.id }).from(classes).where(eq(classes.dapodikId, rombel.rombongan_belajar_id));
 
   if (existing) {
-    await db.update(classes).set({ name: rombel.nama }).where(eq(classes.id, existing.id));
+    await db.update(classes).set({ name: rombel.nama, waliKelasId }).where(eq(classes.id, existing.id));
     summary.classesUpdated += 1;
     return existing.id;
   }
 
   const [created] = await db
     .insert(classes)
-    .values({ schoolYearId, name: rombel.nama, dapodikId: rombel.rombongan_belajar_id })
+    .values({ schoolYearId, name: rombel.nama, dapodikId: rombel.rombongan_belajar_id, waliKelasId })
     .returning({ id: classes.id });
   summary.classesCreated += 1;
   return created.id;
@@ -255,55 +292,87 @@ async function upsertStudent(
  *
  * Peran Dapodik yang tidak relevan dengan pengajaran (Operator Sekolah,
  * Bendahara BOS, dst.) SENGAJA dilewati — tidak masuk `TEACHER_ROLE_MAP`.
+ *
+ * `nip`/`nik` (dari `getGtk` — TIDAK tersedia lewat `getPengguna` sendiri,
+ * lihat `dapodik.ts`) diisi kalau ada: LANGSUNG diset untuk akun baru, tapi
+ * untuk akun yang sudah ada/tertaut HANYA diisi kalau kolomnya masih kosong
+ * (fill-if-empty) — supaya nilai yang sudah dimasukkan manual oleh Admin
+ * tidak tertimpa, konsisten dengan filosofi "tidak menimpa data manual" di
+ * file ini. `nik` dipakai sebagai kunci pencocokan fitur import Excel
+ * Penugasan Guru Wali (§5.5 ARCHITECTURE.md, `actions/guru-wali-import.ts`).
+ *
+ * Mengembalikan `users.id` yang berhasil ditautkan/dibuat (atau `null` kalau
+ * dilewati) — dipakai `runDapodikSync` untuk membangun peta `ptk_id ->
+ * users.id` sebelum memproses kelas, supaya `classes.waliKelasId` bisa
+ * langsung ditautkan ke guru yang baru saja disinkronkan di langkah yang sama.
  */
-async function upsertTeacher(pengguna: DapodikPengguna, schoolId: string, summary: DapodikSyncSummary): Promise<void> {
+async function upsertTeacher(
+  pengguna: DapodikPengguna,
+  schoolId: string,
+  nip: string | null,
+  nik: string | null,
+  summary: DapodikSyncSummary,
+): Promise<string | null> {
   const role = TEACHER_ROLE_MAP[pengguna.peran_id_str];
-  if (!role) return; // peran tidak relevan (Operator, Bendahara, dll.) — bukan error, memang dilewati.
+  if (!role) return null; // peran tidak relevan (Operator, Bendahara, dll.) — bukan error, memang dilewati.
 
   if (!pengguna.ptk_id) {
     summary.teachersSkipped += 1;
-    return;
+    return null;
   }
 
   const email = pengguna.username?.trim().toLowerCase();
   if (!email || !EMAIL_PATTERN.test(email)) {
     summary.teachersSkipped += 1;
-    return;
+    return null;
   }
 
-  const [byPtkId] = await db.select({ id: users.id }).from(users).where(eq(users.dapodikPtkId, pengguna.ptk_id));
+  const [byPtkId] = await db.select({ id: users.id, nip: users.nip, nik: users.nik }).from(users).where(eq(users.dapodikPtkId, pengguna.ptk_id));
   if (byPtkId) {
-    // Sudah pernah disinkronkan sebelumnya — hanya perbarui nama (identitas dasar), jangan sentuh role/password/email
-    // supaya penyesuaian manual oleh Admin (mis. dipromosikan jadi Guru Wali) tidak tertimpa.
-    await db.update(users).set({ name: pengguna.nama }).where(eq(users.id, byPtkId.id));
+    // Sudah pernah disinkronkan sebelumnya — hanya perbarui nama (identitas dasar) + NIP/NIK kalau masih kosong,
+    // jangan sentuh role/password/email supaya penyesuaian manual oleh Admin (mis. dipromosikan jadi Guru Wali)
+    // tidak tertimpa.
+    await db
+      .update(users)
+      .set({ name: pengguna.nama, ...(nip && !byPtkId.nip ? { nip } : {}), ...(nik && !byPtkId.nik ? { nik } : {}) })
+      .where(eq(users.id, byPtkId.id));
     summary.teachersLinked += 1;
-    return;
+    return byPtkId.id;
   }
 
-  const [byEmail] = await db.select({ id: users.id }).from(users).where(eq(users.email, email));
+  const [byEmail] = await db.select({ id: users.id, nip: users.nip, nik: users.nik }).from(users).where(eq(users.email, email));
   if (byEmail) {
-    // Akun sudah ada (dibuat manual) — cukup tautkan, jangan buat baru atau timpa apa pun.
-    await db.update(users).set({ dapodikPtkId: pengguna.ptk_id }).where(eq(users.id, byEmail.id));
+    // Akun sudah ada (dibuat manual) — tautkan + isi NIP/NIK kalau masih kosong, jangan timpa apa pun lagi.
+    await db
+      .update(users)
+      .set({ dapodikPtkId: pengguna.ptk_id, ...(nip && !byEmail.nip ? { nip } : {}), ...(nik && !byEmail.nik ? { nik } : {}) })
+      .where(eq(users.id, byEmail.id));
     summary.teachersLinked += 1;
-    return;
+    return byEmail.id;
   }
 
   const tempPassword = generateTempPassword();
   const passwordHash = await bcrypt.hash(tempPassword, 10);
 
-  await db.insert(users).values({
-    schoolId,
-    name: pengguna.nama,
-    email,
-    passwordHash,
-    role,
-    phone: pengguna.no_hp ?? pengguna.no_telepon ?? null,
-    dapodikPtkId: pengguna.ptk_id,
-    mustChangePassword: true,
-  });
+  const [created] = await db
+    .insert(users)
+    .values({
+      schoolId,
+      name: pengguna.nama,
+      email,
+      passwordHash,
+      role,
+      nip,
+      nik,
+      phone: pengguna.no_hp ?? pengguna.no_telepon ?? null,
+      dapodikPtkId: pengguna.ptk_id,
+      mustChangePassword: true,
+    })
+    .returning({ id: users.id });
 
   summary.teachersCreated += 1;
   summary.newTeacherCredentials.push({ name: pengguna.nama, email, role, tempPassword });
+  return created.id;
 }
 
 async function upsertGuardian(studentId: string, pd: DapodikPesertaDidik) {

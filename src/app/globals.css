@@ -12,12 +12,19 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/*
+ * Sengaja TIDAK ada @media (prefers-color-scheme: dark) di sini. Seluruh
+ * komponen di aplikasi ini pakai warna Tailwind mode terang yang di-hardcode
+ * (bg-white, bg-slate-50, border-slate-200, dst — cek: nol pemakaian varian
+ * `dark:` di seluruh src/). Boilerplate create-next-app sebelumnya membalik
+ * --background/--foreground jadi gelap saat OS/browser diset dark mode, tapi
+ * background Card tetap putih/terang (hardcoded) — hasilnya teks yang
+ * mewarisi `color: var(--foreground)` (elemen tanpa class warna eksplisit,
+ * mis. baris daftar penugasan) jadi abu-abu terang di atas latar putih:
+ * kontras nyaris tak terbaca. Kalau nanti benar-benar ingin dukung dark
+ * mode, itu perlu desain ulang sistematis (varian `dark:` di semua
+ * komponen), bukan sekadar mengembalikan blok ini.
+ */
 
 body {
   background: var(--background);
