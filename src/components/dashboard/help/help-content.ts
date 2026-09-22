@@ -195,6 +195,22 @@ export const ROLE_GUIDES: RoleGuide[] = [
         ],
       },
       {
+        id: "unduh-laporan",
+        title: "Unduh Laporan (Perencanaan & Pelaksanaan Tahunan)",
+        blocks: [
+          p(
+            "Di bawah Matriks Rencana Kerja ada 2 tombol unduh — keduanya PDF yang disusun OTOMATIS dari data yang sudah Anda isi sepanjang tahun. Anda tidak perlu menulis laporan ini dari nol.",
+          ),
+          list(
+            "Laporan Perencanaan — daftar murid binaan + Matriks Rencana Kerja yang sudah terisi. Cocok diunduh di awal tahun ajaran (Juli) sebagai bukti fisik 'Menyusun Laporan Perencanaan'.",
+            "Laporan Pelaksanaan Tahunan — kompilasi Lembar Identitas Murid Wali, semua Laporan Konsultasi/Kolaborasi/Bimbingan Kelompok/Kunjungan Rumah yang pernah Anda catat di menu Jurnal, plus ringkasan Target SMART. Cocok diunduh di akhir tahun ajaran (Juni) sebagai bukti fisik 'Penyusunan Laporan Pelaksanaan Tahunan'.",
+          ),
+          note(
+            "Karena isinya diambil langsung dari data Jurnal, Murid Saya, dan Target SMART — makin rajin Anda mencatat sepanjang tahun, makin lengkap kedua laporan ini nanti. Bagian yang belum ada datanya akan tertulis 'Belum ada...', bukan dikosongkan diam-diam.",
+          ),
+        ],
+      },
+      {
         id: "ai-assistant",
         title: "AI Assistant",
         blocks: [

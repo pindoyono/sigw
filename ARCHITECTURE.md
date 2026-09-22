@@ -58,7 +58,8 @@ app/
 │   │   │   ├── admin/guru-wali-template/route.ts  # §7.2 generate template Excel import Guru Wali
 │   │   │   ├── admin/attendance-template/route.ts  # §5.4b generate template Excel rekap kehadiran
 │   │   │   ├── admin/academic-scores-template/route.ts  # §5.4b generate template Excel import nilai (leger)
-│   │   │   └── files/                  # §7.0c penyajian berkas ber-otorisasi (SK Guru Wali, foto murid) — BUKAN public/
+│   │   │   ├── files/                  # §7.0c penyajian berkas ber-otorisasi (SK Guru Wali, foto murid) — BUKAN public/
+│   │   │   └── reports/                 # §7.0d generate PDF Laporan Perencanaan & Pelaksanaan Tahunan (guru_wali-only)
 │   │   └── dashboard/
 │   │       ├── layout.tsx              # shell dashboard (nav ROLE-AWARE, sign-out)
 │   │       ├── page.tsx                # §7.0 Dashboard SEMUA role (1 file, cabang per session.user.role) — EWS Guru Wali, statistik sekolah Admin/Kepsek/BK/Wali Kelas/Mapel
@@ -108,6 +109,8 @@ app/
 │   │   ├── ticket-workflow.ts          # §6 state machine SOP Kolaborasi
 │   │   ├── dashboard-stats.ts          # §7.0 query agregat dashboard statistik (school/class/collaborator stats)
 │   │   ├── excel-helpers.ts            # §5.4b/§7.2 parsing sel Excel bersama (cellToString/cellToDateString/cellToNumber)
+│   │   ├── pdf.ts                      # §7.0d setup pdfmake (font, header/tanda tangan laporan) — pakai fonts/roboto/*.ttf
+│   │   ├── fonts/roboto/*.ttf           # §7.0d font Roboto disalin dari pdfmake (bukan diimpor dari node_modules)
 │   │   ├── file-storage.ts             # §7.0c storage berkas lokal (SK Guru Wali, foto murid) — path statis, LIHAT komentar di file
 │   │   ├── text-helpers.ts             # `linesToArray`/`arrayToLines` — konversi textarea <-> field array jsonb, dipakai journal.ts & student-profile.ts
 │   │   └── utils.ts
@@ -459,6 +462,17 @@ Disajikan lewat **route Next.js ber-otorisasi** (bukan link `public/` langsung) 
 
 **Keterbatasan yang diketahui**: menghapus baris `guru_wali_assignments`/`students` tidak otomatis menghapus berkas fisiknya di disk (jadi orphan) — belum ada job pembersihan berkala untuk ini; dampaknya kecil karena kedua alur hapus itu jarang dipakai (assignment cuma di-nonaktifkan lewat "Akhiri", bukan dihapus; belum ada fitur hapus murid).
 
+### 7.0d Unduh Laporan — Laporan Perencanaan & Laporan Pelaksanaan Tahunan
+File: `src/lib/pdf.ts`, `src/app/api/reports/laporan-perencanaan/route.ts`, `src/app/api/reports/laporan-pelaksanaan-tahunan/route.ts`, tombol di `src/app/dashboard/work-plan/page.tsx`.
+
+Ditambahkan 2026-09-23 — "Menyusun Laporan Perencanaan" dan "Penyusunan Laporan Pelaksanaan Tahunan" adalah 2 dari 11 item resmi Matriks Rencana Kerja (§7.0b), masing-masing butuh bukti fisik "Laporan Perencanaan" dan "Laporan Pelaksanaan (Jurnal Guru Wali)". Buku 1 §1.14 eksplisit: **belum ada format baku resmi** untuk laporan ini, tapi komponen acuan isinya adalah 5 hal yang SEMUANYA sudah jadi data di SIGW — (a) Lembar Identitas Murid Wali, (b) Laporan Konsultasi Perwalian, (c) Laporan Kolaborasi, (d) Laporan Bimbingan Kelompok, (e) Laporan Kunjungan Rumah (semua §7.0b/journal). Kesimpulannya: laporan ini **tidak perlu ditulis manual** — cukup dikompilasi otomatis dari data yang Guru Wali sudah isi sepanjang tahun lewat menu Jurnal & Murid Saya.
+
+- **PDF, BUKAN Word/HTML-to-PDF via Puppeteer** — dipilih `pdfmake` (pure JS, deklaratif, tabel & pagination otomatis) secara sadar supaya TIDAK perlu Chromium di VPS (DEPLOYMENT.md menargetkan VPS mandiri seringan mungkin; Puppeteer/`headless-chrome` akan menambah ratusan MB + dependensi sistem). Font Roboto disalin ke `src/lib/fonts/roboto/*.ttf` (BUKAN diimpor langsung dari `node_modules/pdfmake/fonts/`) supaya tidak bergantung pada struktur folder internal pdfmake yang bisa berubah antar versi — path baca font SENGAJA statis (`process.cwd()`), pola yang sama dengan `file-storage.ts` (lihat §7.0c di atas): proyek ini TIDAK pakai `output: "standalone"` di `next.config.ts`, jadi seluruh source tree tetap ada di disk saat runtime produksi.
+- **Laporan Perencanaan** (`/api/reports/laporan-perencanaan`): daftar murid binaan aktif + Matriks Rencana Kerja tahun ajaran aktif yang sudah terisi (tabel kegiatan × bulan, sama persis strukturnya dengan `WorkPlanTable`).
+- **Laporan Pelaksanaan Tahunan** (`/api/reports/laporan-pelaksanaan-tahunan`): kompilasi 5 komponen resmi di atas (query langsung ke `consultation_logs`/`collaboration_logs`/`group_guidance_sessions`+`group_guidance_participants`/`home_visits`, semua di-scope `teacherId` = Guru Wali yang login) + 1 bagian tambahan non-resmi (ringkasan akhir `smart_goals`) karena datanya relevan & sudah ada — bagian yang belum ada datanya tertulis eksplisit "Belum ada..." (bukan baris kosong tak terjelaskan).
+- **Guru Wali-only**, tidak scoped tahun ajaran untuk komponen (b)-(f) (tampilkan SEMUA riwayat milik guru itu, bukan cuma tahun aktif) — laporan tahunan yang diunduh di bulan Juni seharusnya memang mencakup seluruh tahun ajaran berjalan yang baru saja berakhir.
+- **Diverifikasi nyata**: dites lewat murid & guru sintetis `[TEST]` (dihapus total setelahnya, row count DB kembali ke baseline) — PDF yang dihasilkan diparse ulang (`pypdf`) untuk memastikan SEMUA data (nama murid, tanggal, isi jurnal, progres SMART) benar-benar muncul di teks PDF, bukan cuma "berhasil generate file tanpa error".
+
 ### 7.1 Halaman Kolaborasi (Kepala Sekolah / Guru BK / Wali Kelas / Guru Mapel)
 File: `src/app/dashboard/collaboration/page.tsx`.
 
@@ -573,6 +587,8 @@ Semua item berikut sudah pernah dilacak sebagai gap dan **sudah dikerjakan** pad
 - ✅ Dashboard statistik per role (Admin/Kepala Sekolah/Guru BK/Wali Kelas/Guru Mapel) — sebelumnya kelima role ini langsung di-redirect menjauh dari `/dashboard` tanpa pernah melihat ringkasan statistik (§7.0).
 - ✅ Sumber data kehadiran & nilai untuk EWS — ditemukan lewat audit bahwa `attendance_records`/`academic_scores` (65% bobot EWS) tidak punya satu pun jalur pengisian data produksi; ditutup lewat import Excel dari rekap absensi kertas & leger guru mapel (§5.4b).
 - ✅ Profil Sekolah bisa dikoreksi Admin sendiri (nama/NPSN/alamat) — sebelumnya cuma bisa diisi sekali lewat `db:seed`, tidak ada jalan perbaikan; ditemukan karena sekolah produksi tercatat masih bernama sekolah demo (§7.2).
+- ✅ Seluruh data `db:seed` dibersihkan dari database produksi (2026-09-23) — audit menyeluruh menemukan 5 akun `@sigw.test` (termasuk `admin@sigw.test`, SATU-SATUNYA akun admin yang ada, kredensialnya terpublikasi di dokumentasi), 5 murid demo, 1 kelas demo "VIII-B", plus sisa pengujian manual sebelumnya (2 tiket lengkap sampai "Selesai", 1 log konsultasi, 1 log AI, 11 item Matriks Rencana Kerja) — semua tercampur langsung dengan 602 murid/56 guru/21 kelas sungguhan, bukan terisolasi. **Akun admin baru** (`admin@guruwali.smkn2malinau.sch.id`, kredensial internal) dibuat & diverifikasi bisa login LEBIH DULU sebelum `admin@sigw.test` dihapus, supaya tidak pernah ada jeda tanpa akses admin. Tahun ajaran "2026/2027" (juga dari `db:seed`) SENGAJA TIDAK dihapus — 21 kelas sungguhan ternyata menempel ke baris itu juga (job sinkronisasi Dapodik memakai "tahun ajaran aktif" yang sudah ada, bukan membuat baru), namanya sendiri tidak mencurigakan sebagai data demo jadi dibiarkan. Verifikasi lewat query FK cascade (`onDelete`) di `schema.ts` sebelum eksekusi, row count sebelum/sesudah, dan query silang murid asli ↔ akun demo (0 keterkaitan) — bukan tebak-tebakan.
+- ✅ Laporan Perencanaan & Laporan Pelaksanaan Tahunan bisa diunduh sebagai PDF, dikompilasi otomatis dari data yang sudah ada (§7.0d) — sebelumnya Guru Wali harus menulis ulang manual 2 laporan ini padahal 5 dari komponen resminya (per Buku 1 §1.14) sudah jadi data di SIGW sejak awal (Lembar Identitas, 4 jenis Jurnal).
 
 **Yang masih terbuka** (audit jujur, supaya developer lanjutan tahu persis di mana berhenti):
 
