@@ -1,6 +1,9 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Field } from "@/components/ui/field";
 import { updateSmartGoalProgressAction } from "@/lib/actions/smart-goals";
 
 export interface SmartGoalRow {
@@ -53,32 +56,22 @@ export function SmartGoalCard({ goal }: { goal: SmartGoalRow }) {
 
         <form action={updateSmartGoalProgressAction} className="flex flex-wrap items-end gap-2 border-t border-slate-100 pt-3">
           <input type="hidden" name="smartGoalId" value={goal.id} />
-          <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-medium text-slate-500">Progres Baru (%)</label>
-            <input
+          <Field label="Progres Baru (%)" htmlFor={`goal-progress-${goal.id}`} labelClassName="text-[11px]" className="w-24">
+            <Input
+              id={`goal-progress-${goal.id}`}
               type="number"
               name="progressPercent"
               min={0}
               max={100}
               defaultValue={goal.progressPercent}
-              className="w-24 rounded-md border border-slate-300 px-2 py-1 text-sm"
             />
-          </div>
-          <div className="flex flex-1 min-w-[160px] flex-col gap-1">
-            <label className="text-[11px] font-medium text-slate-500">Catatan Checkpoint</label>
-            <input
-              type="text"
-              name="notes"
-              placeholder="Catatan progres..."
-              className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
-            />
-          </div>
-          <button
-            type="submit"
-            className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
-          >
+          </Field>
+          <Field label="Catatan Checkpoint" htmlFor={`goal-notes-${goal.id}`} labelClassName="text-[11px]" className="min-w-40 flex-1">
+            <Input id={`goal-notes-${goal.id}`} type="text" name="notes" placeholder="Catatan progres..." />
+          </Field>
+          <Button type="submit" size="sm">
             Perbarui
-          </button>
+          </Button>
         </form>
       </CardContent>
     </Card>

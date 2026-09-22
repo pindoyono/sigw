@@ -3,6 +3,9 @@
 import { useActionState } from "react";
 import { createStudentAction } from "@/lib/actions/admin";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Field } from "@/components/ui/field";
 
 interface Option {
   id: string;
@@ -15,33 +18,29 @@ export function CreateStudentForm({ classes }: { classes: Option[] }) {
   return (
     <form action={formAction} className="flex flex-col gap-3">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-slate-600">NISN</label>
-          <input name="nisn" required className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-slate-600">Nama Lengkap</label>
-          <input name="fullName" required className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-slate-600">Jenis Kelamin</label>
-          <select name="gender" required className="rounded-md border border-slate-300 px-3 py-2 text-sm">
+        <Field label="NISN" htmlFor="student-nisn" labelClassName="text-xs">
+          <Input id="student-nisn" name="nisn" required />
+        </Field>
+        <Field label="Nama Lengkap" htmlFor="student-name" labelClassName="text-xs">
+          <Input id="student-name" name="fullName" required />
+        </Field>
+        <Field label="Jenis Kelamin" htmlFor="student-gender" labelClassName="text-xs">
+          <Select id="student-gender" name="gender" required defaultValue="">
             <option value="">Pilih...</option>
             <option value="laki_laki">Laki-laki</option>
             <option value="perempuan">Perempuan</option>
-          </select>
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-slate-600">Kelas (opsional)</label>
-          <select name="classId" className="rounded-md border border-slate-300 px-3 py-2 text-sm">
+          </Select>
+        </Field>
+        <Field label="Kelas (opsional)" htmlFor="student-class" labelClassName="text-xs">
+          <Select id="student-class" name="classId" defaultValue="">
             <option value="">Belum ditentukan</option>
             {classes.map((o) => (
               <option key={o.id} value={o.id}>
                 {o.label}
               </option>
             ))}
-          </select>
-        </div>
+          </Select>
+        </Field>
       </div>
       {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
       <Button type="submit" disabled={pending} className="self-start">

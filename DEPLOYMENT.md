@@ -134,8 +134,15 @@ bun install
 bun run db:migrate            # bikin extension pgvector + jalankan semua migrasi
 bun run db:seed-instruments   # isi instrumen asesmen IKEM-12 (idempotent, aman diulang)
 
+# Folder upload berkas (SK Guru Wali, foto murid) — path STATIS relatif ke root aplikasi
+# (lihat src/lib/file-storage.ts), bukan public/, jadi harus ada & writable sebelum dipakai.
+# TIDAK ikut `git pull` (di .gitignore) — backup terpisah dari kode, lihat catatan di bawah.
+mkdir -p uploads/sk-guru-wali uploads/student-photo
+
 bun run build                 # build production (.next/)
 ```
+
+> **Backup**: folder `uploads/` berisi dokumen SK & foto murid asli — **tidak ada di git, tidak ikut ter-backup otomatis lewat `git pull`**. Masukkan ke rutinitas backup terpisah (mis. `rsync`/`tar` berkala ke storage lain), sama pentingnya dengan backup database.
 
 > **Jangan jalankan `bun run db:seed`** di server produksi — itu mengisi data DEMO (sekolah palsu "SMP Negeri 1 Contoh", 5 akun dengan password `password123`). Untuk sekolah sungguhan, ikuti §7 di bawah untuk membuat sekolah & admin pertama yang benar.
 

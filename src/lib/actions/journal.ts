@@ -14,15 +14,7 @@ import {
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { isOwnActiveStudent } from "@/lib/actions/guards";
-
-/** Ubah textarea multi-baris ("a.\nb.\nc.") menjadi array string, buang baris kosong. */
-function linesToArray(value: FormDataEntryValue | null): string[] {
-  if (typeof value !== "string") return [];
-  return value
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
-}
+import { linesToArray } from "@/lib/text-helpers";
 
 async function requireGuruWali() {
   const session = await auth();

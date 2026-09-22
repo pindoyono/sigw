@@ -9,6 +9,8 @@ import {
   syncDapodikCustomAction,
 } from "@/lib/actions/dapodik";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Field } from "@/components/ui/field";
 
 export interface DapodikConfigSummary {
   baseUrl: string;
@@ -111,9 +113,9 @@ export function DapodikConfigForm({ existing }: { existing: DapodikConfigSummary
               </Button>
             </form>
             <form action={deleteDapodikConfigAction}>
-              <button type="submit" className="text-xs text-red-600 underline hover:text-red-700">
+              <Button type="submit" variant="ghost" size="sm" className="text-red-600 hover:bg-red-50 hover:text-red-700">
                 Hapus Konfigurasi
-              </button>
+              </Button>
             </form>
           </div>
           <ResultMessage state={syncState} />
@@ -125,37 +127,28 @@ export function DapodikConfigForm({ existing }: { existing: DapodikConfigSummary
           {existing ? "Ganti Konfigurasi / Sinkronisasi Custom" : "Hubungkan ke Dapodik"}
         </p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-slate-600">Base URL Webservice</label>
-            <input
+          <Field label="Base URL Webservice" htmlFor="dapodik-base-url" labelClassName="text-xs">
+            <Input
+              id="dapodik-base-url"
               name="baseUrl"
               required
               placeholder="https://domain-anda.my.id/WebService"
               defaultValue={existing?.baseUrl}
-              className="rounded-md border border-slate-300 px-3 py-2 text-sm"
             />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-slate-600">NPSN</label>
-            <input
-              name="npsn"
-              required
-              placeholder="30402834"
-              defaultValue={existing?.npsn}
-              className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-slate-600">Token WebService</label>
-            <input
+          </Field>
+          <Field label="NPSN" htmlFor="dapodik-npsn" labelClassName="text-xs">
+            <Input id="dapodik-npsn" name="npsn" required placeholder="30402834" defaultValue={existing?.npsn} />
+          </Field>
+          <Field label="Token WebService" htmlFor="dapodik-token" labelClassName="text-xs">
+            <Input
+              id="dapodik-token"
               type="password"
               name="token"
               required
               autoComplete="off"
               placeholder={existing ? "Isi ulang untuk mengganti/menyinkronkan" : "Dari menu Pengaturan > WebService Dapodik"}
-              className="rounded-md border border-slate-300 px-3 py-2 text-sm"
             />
-          </div>
+          </Field>
         </div>
 
         <details className="rounded-md border border-slate-200 p-2">
@@ -163,24 +156,22 @@ export function DapodikConfigForm({ existing }: { existing: DapodikConfigSummary
             Lapisan Keamanan Tambahan (Opsional) — Cloudflare Access Service Token
           </summary>
           <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-slate-600">CF-Access-Client-Id</label>
-              <input
+            <Field label="CF-Access-Client-Id" htmlFor="dapodik-cf-id" labelClassName="text-xs">
+              <Input
+                id="dapodik-cf-id"
                 name="cfAccessClientId"
                 placeholder={existing?.hasCfAccess ? "Isi ulang untuk mengganti" : "xxxxxxxx.access"}
-                className="rounded-md border border-slate-300 px-3 py-2 text-sm"
               />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-slate-600">CF-Access-Client-Secret</label>
-              <input
+            </Field>
+            <Field label="CF-Access-Client-Secret" htmlFor="dapodik-cf-secret" labelClassName="text-xs">
+              <Input
+                id="dapodik-cf-secret"
                 type="password"
                 name="cfAccessClientSecret"
                 autoComplete="off"
                 placeholder={existing?.hasCfAccess ? "Isi ulang untuk mengganti" : "dari Cloudflare Zero Trust"}
-                className="rounded-md border border-slate-300 px-3 py-2 text-sm"
               />
-            </div>
+            </Field>
           </div>
           <p className="mt-2 text-[11px] text-slate-400">
             Isi hanya kalau Tunnel dipasangi Cloudflare Access Service Token (lihat runbook di ARCHITECTURE.md §10).

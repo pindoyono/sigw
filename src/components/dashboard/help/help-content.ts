@@ -41,11 +41,13 @@ export const ROLE_GUIDES: RoleGuide[] = [
           ),
           list(
             "Dashboard — lihat murid mana yang perlu perhatian lebih dulu (Early Warning System).",
+            "Murid Saya — lengkapi Lembar Identitas tiap murid binaan (data pribadi, orang tua, riwayat pendidikan, prestasi, aspirasi, karakter) dan unggah fotonya.",
             "Tiket Kolaborasi — laporkan masalah murid dan ikuti alur penanganannya sampai selesai.",
             "Target SMART — catat dan pantau target belajar tiap murid.",
             "Jurnal — catat setiap konsultasi, kolaborasi, bimbingan kelompok, dan kunjungan rumah.",
             "Refleksi Murid — catat refleksi mingguan murid.",
             "Instrumen Asesmen — skrining kesejahteraan emosional murid secara terstruktur.",
+            "Matriks Rencana Kerja — susun rencana kerja tahunan Anda sebagai Guru Wali.",
             "AI Assistant — tanya jawab berbasis Buku Saku Guru Wali.",
           ),
           note(
@@ -69,6 +71,26 @@ export const ROLE_GUIDES: RoleGuide[] = [
           ),
           note(
             "Skor risiko dihitung otomatis dan diperbarui setiap kali Anda membuka Dashboard — Anda tidak perlu menghitung atau mengisi apa pun secara manual. Angka ini adalah alat bantu prioritas, bukan penilaian akhir — tetap gunakan penilaian Anda sendiri sebagai Guru Wali.",
+          ),
+        ],
+      },
+      {
+        id: "murid-saya",
+        title: "Murid Saya (Lembar Identitas Murid Wali)",
+        blocks: [
+          p(
+            "Menu 'Murid Saya' menampilkan daftar murid binaan aktif Anda. Klik nama murid untuk membuka Lembar Identitas lengkapnya — satu halaman berisi 5 bagian, supaya pendampingan Anda tidak bersifat umum, melainkan personal per anak.",
+          ),
+          list(
+            "A. Identitas Dasar — nama panggilan, tempat/tanggal lahir, agama, alamat, anak ke-berapa, no. HP, media sosial, riwayat penyakit kronis. Sebagian data ini sudah terisi otomatis dari Dapodik, sisanya Anda lengkapi manual.",
+            "B. Identitas Orang Tua/Wali — data ayah, ibu, dan/atau wali.",
+            "C. Riwayat Pendidikan & Prestasi — asal sekolah (TK/SD/SMP) dan daftar prestasi akademik/non-akademik, bisa tambah baris sebanyak yang dibutuhkan.",
+            "D. Aspirasi Studi Lanjut & Karier — cita-cita, mapel favorit/lemah, hobi, skill yang sudah/ingin dikuasai, hambatan yang dihadapi murid.",
+            "E. Karakter & Sosial-Emosional — catatan kedisiplinan, empati, regulasi emosi, dan refleksi diri murid.",
+            "Foto Murid — unggah foto (JPG/PNG/WEBP, maks 10MB) di bagian atas halaman.",
+          ),
+          note(
+            "Setiap bagian punya tombol simpan sendiri-sendiri — mengisi bagian D tidak akan menghapus data yang sudah Anda isi di bagian E (atau sebaliknya). Anda bisa mengisi bertahap, tidak harus sekaligus.",
           ),
         ],
       },
@@ -152,6 +174,21 @@ export const ROLE_GUIDES: RoleGuide[] = [
           warning(
             "IKEM-12 adalah instrumen SKRINING AWAL buatan internal untuk membantu Anda memprioritaskan tindak lanjut — BUKAN alat diagnostik klinis (bukan tes psikologi resmi). Hasil 'Tinggi' berarti perlu didiskusikan lebih lanjut, misalnya dengan Guru BK — bukan kesimpulan akhir.",
           ),
+        ],
+      },
+      {
+        id: "rencana-kerja",
+        title: "Matriks Rencana Kerja",
+        blocks: [
+          p(
+            "Menu 'Matriks Rencana Kerja' adalah rencana kerja tahunan Anda sebagai Guru Wali — tabel kegiatan dikelompokkan ke 3 tahap (Persiapan, Pelaksanaan, Evaluasi) dengan kolom bulan Juli-Juni untuk menandai kapan tiap kegiatan direncanakan.",
+          ),
+          steps(
+            "Kalau belum ada kegiatan, klik 'Pakai Template Resmi' untuk mengisi 11 kegiatan baku sekali sebagai titik awal — Anda tetap bebas menambah atau menghapus kegiatan setelahnya.",
+            "Untuk kegiatan tambahan, isi nama kegiatan, kategori (Persiapan/Pelaksanaan/Evaluasi), bulan-bulan rencananya, dan jenis bukti pelaksanaannya, lalu simpan.",
+            "Hapus baris kegiatan yang sudah tidak relevan lewat tombol hapus di baris tersebut.",
+          ),
+          note("Tombol 'Pakai Template Resmi' hanya bisa dipakai sekali selama belum ada kegiatan tersimpan — kalau ingin mulai ulang dari template, hapus dulu semua kegiatan yang ada."),
         ],
       },
       {
@@ -322,6 +359,9 @@ export const ROLE_GUIDES: RoleGuide[] = [
         title: "Murid",
         blocks: [
           steps("Isi NISN, nama lengkap, jenis kelamin, dan kelas (opsional) untuk mendaftarkan murid baru ke sistem."),
+          note(
+            "Anda juga bisa membuka menu 'Murid Saya' untuk melihat/melengkapi Lembar Identitas Murid Wali (data pribadi, orang tua, riwayat pendidikan, prestasi, aspirasi, karakter) dan foto murid mana pun di sekolah Anda — bukan hanya Guru Wali yang bisa mengisinya.",
+          ),
         ],
       },
       {
@@ -343,6 +383,7 @@ export const ROLE_GUIDES: RoleGuide[] = [
           p("Menautkan seorang Guru Wali ke murid tertentu — ini yang menentukan murid mana saja yang muncul di semua menu Guru Wali tersebut."),
           steps(
             "Pilih Guru Wali dan murid, isi tanggal mulai berlaku dan nomor SK (opsional).",
+            "Unggah berkas SK Guru Wali (PDF/JPG/PNG/WEBP, maks 10MB) lewat tombol 'Unggah SK' di baris penugasan — ini bukti fisik yang diwajibkan Kepmendikdasmen 221/P/2025. Klik 'Ganti' untuk mengganti berkas yang sudah diunggah.",
             "Klik 'Akhiri' pada penugasan yang sudah tidak berlaku (misalnya murid pindah Guru Wali) — murid tersebut baru bisa ditugaskan ke Guru Wali lain setelah penugasan lamanya diakhiri.",
           ),
           warning("Satu murid hanya boleh punya satu Guru Wali AKTIF pada satu waktu."),

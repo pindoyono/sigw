@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { resetUserPasswordAction } from "@/lib/actions/admin";
+import { Button } from "@/components/ui/button";
 
 export interface UserListRow {
   id: string;
@@ -23,9 +24,9 @@ function UserRow({ user }: { user: UserListRow }) {
         </span>
         <form action={formAction}>
           <input type="hidden" name="userId" value={user.id} />
-          <button type="submit" disabled={pending} className="shrink-0 text-blue-600 underline hover:text-blue-700 disabled:opacity-50">
+          <Button type="submit" disabled={pending} size="sm" variant="ghost" className="shrink-0 text-blue-600 hover:bg-blue-50">
             {pending ? "Mereset..." : "Reset Password"}
-          </button>
+          </Button>
         </form>
       </div>
       {state?.error && <p className="text-red-600">{state.error}</p>}

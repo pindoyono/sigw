@@ -3,6 +3,9 @@
 import { useActionState } from "react";
 import { createClassAction } from "@/lib/actions/admin";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Field } from "@/components/ui/field";
 
 interface Option {
   id: string;
@@ -15,32 +18,29 @@ export function CreateClassForm({ schoolYears, teachers }: { schoolYears: Option
   return (
     <form action={formAction} className="flex flex-col gap-3">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-slate-600">Tahun Ajaran</label>
-          <select name="schoolYearId" required className="rounded-md border border-slate-300 px-3 py-2 text-sm">
+        <Field label="Tahun Ajaran" htmlFor="class-school-year" labelClassName="text-xs">
+          <Select id="class-school-year" name="schoolYearId" required defaultValue="">
             <option value="">Pilih...</option>
             {schoolYears.map((o) => (
               <option key={o.id} value={o.id}>
                 {o.label}
               </option>
             ))}
-          </select>
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-slate-600">Nama Kelas</label>
-          <input name="name" required placeholder="VIII-C" className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-slate-600">Wali Kelas (opsional)</label>
-          <select name="waliKelasId" className="rounded-md border border-slate-300 px-3 py-2 text-sm">
+          </Select>
+        </Field>
+        <Field label="Nama Kelas" htmlFor="class-name" labelClassName="text-xs">
+          <Input id="class-name" name="name" required placeholder="VIII-C" />
+        </Field>
+        <Field label="Wali Kelas (opsional)" htmlFor="class-wali" labelClassName="text-xs">
+          <Select id="class-wali" name="waliKelasId" defaultValue="">
             <option value="">Belum ditentukan</option>
             {teachers.map((o) => (
               <option key={o.id} value={o.id}>
                 {o.label}
               </option>
             ))}
-          </select>
-        </div>
+          </Select>
+        </Field>
       </div>
       {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
       <Button type="submit" disabled={pending} className="self-start">

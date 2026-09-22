@@ -28,7 +28,7 @@ Skema database (`src/db/schema.ts`) dirancang **1:1 terhadap dokumen fisik** di 
 |---|---|---|
 | Framework | **Next.js 16** (App Router, React 19) | Server Components + Server Actions menghilangkan kebutuhan REST/GraphQL API terpisah untuk CRUD internal; cocok untuk tim kecil, deploy cepat (Vercel/self-host). |
 | Bahasa | **TypeScript** (strict) | Skema DB, tipe state machine tiket, dan props UI semuanya type-safe end-to-end lewat inferensi Drizzle. |
-| Styling/UI | **Tailwind CSS v4** + **Radix UI primitives** + `class-variance-authority` | Aksesibilitas (Radix) + kecepatan iterasi (Tailwind), tanpa lock-in ke design system besar. |
+| Styling/UI | **Tailwind CSS v4** + primitive native (`src/components/ui/`) + `class-variance-authority` | Elemen native (`<input>`/`<select>`/`<button>`) yang di-styling lewat `cva`, BUKAN Radix — dependensi `@radix-ui/*` sempat ter-install (sisa scaffold awal) tapi nol pemakaian di `src/`, dihapus 2026-09-22. Cukup untuk kebutuhan proyek (tanpa modal/dropdown kompleks) dan otomatis dapat keyboard/screen-reader native browser tanpa dependensi tambahan. |
 | Database | **PostgreSQL + pgvector** | Data relasional pendidikan (murid, nilai, kehadiran) butuh integritas relasional kuat; `pgvector` memungkinkan RAG (retrieval semantik) tanpa vector DB terpisah — mengurangi jumlah moving parts infrastruktur. |
 | ORM | **Drizzle ORM + drizzle-kit** | Query builder type-safe, migrasi SQL eksplisit (bukan magic), ringan (tanpa runtime codegen besar seperti Prisma). |
 | Auth | **NextAuth v5 (Credentials + JWT)** | Role-based access (`user_role` enum: admin, kepala_sekolah, guru_wali, guru_bk, wali_kelas, guru_mapel) dicantumkan di JWT/session, dicek di `middleware.ts` (edge) dan di setiap Server Action. |
@@ -55,10 +55,13 @@ app/
 │   │   │   ├── auth/[...nextauth]/route.ts
 │   │   │   ├── cron/ews-snapshot/route.ts  # §5.4 endpoint terjadwal (Vercel Cron)
 │   │   │   ├── cron/dapodik-sync/route.ts  # §5.5 endpoint terjadwal sinkronisasi Dapodik (Vercel Cron)
-│   │   │   └── admin/guru-wali-template/route.ts  # §7.2 generate template Excel import Guru Wali
+│   │   │   ├── admin/guru-wali-template/route.ts  # §7.2 generate template Excel import Guru Wali
+│   │   │   └── files/                  # §7.0c penyajian berkas ber-otorisasi (SK Guru Wali, foto murid) — BUKAN public/
 │   │   └── dashboard/
 │   │       ├── layout.tsx              # shell dashboard (nav ROLE-AWARE, sign-out)
 │   │       ├── page.tsx                # Dashboard Guru Wali (EWS + tren + SMART goals); redirect otomatis utk role lain
+│   │       ├── students/page.tsx       # §7.0b daftar murid binaan -> [id]/page.tsx Lembar Identitas Murid Wali lengkap
+│   │       ├── work-plan/page.tsx      # §7.0b Matriks Rencana Kerja
 │   │       ├── change-password/page.tsx # §5.5/§8 ganti password wajib (akun hasil auto-provisioning Dapodik)
 │   │       ├── collaboration/page.tsx  # §7.1 — Kepala Sekolah/Guru BK/Wali Kelas/Guru Mapel
 │   │       ├── admin/page.tsx          # §7.2 — panel Admin (CRUD data master)
@@ -68,18 +71,22 @@ app/
 │   │       ├── smart-goals/page.tsx    # Target SMART
 │   │       ├── tickets/page.tsx        # Tiket SOP Kolaborasi (Guru Wali sbg case manager)
 │   │       ├── ai-assistant/page.tsx   # AI Assistant (RAG)
+│   │       ├── flow/page.tsx           # §7.4 — Alur Kerja (flowchart interaktif), semua role
 │   │       └── help/page.tsx           # §7.3 — Panduan Pengguna, semua role
 │   ├── components/
 │   │   ├── dashboard/                  # form-form + guru-wali-dashboard.tsx, risk-trend-sparkline.tsx
 │   │   │   ├── admin/                  # form-form khusus panel Admin
+│   │   │   ├── flow/                   # §7.4 konten & UI Alur Kerja (flow-content.ts, flow-chart.tsx)
 │   │   │   └── help/                   # §7.3 konten & UI Panduan Pengguna (help-content.ts, help-center.tsx)
-│   │   └── ui/                         # primitives (badge, button, card, progress)
+│   │   └── ui/                         # §7.5 primitives (badge, button, card, progress, input, textarea, select, checkbox, label, field)
 │   ├── lib/
 │   │   ├── actions/                    # Server Actions ("use server") — satu file per domain
 │   │   │   ├── guards.ts               # §8 primitif otorisasi bersama (isOwnActiveStudent, dst.) — BUKAN "use server"
 │   │   │   ├── ai-config.ts            # §5.2/§7.2 CRUD konfigurasi provider AI (admin-only)
 │   │   │   ├── dapodik.ts              # §5.5/§7.2 CRUD konfigurasi + trigger sync Dapodik (admin-only)
-│   │   │   └── guru-wali-import.ts     # §7.2 import massal Penugasan Guru Wali dari Excel (admin-only)
+│   │   │   ├── guru-wali-import.ts     # §7.2 import massal Penugasan Guru Wali dari Excel (admin-only)
+│   │   │   ├── student-profile.ts      # §7.0b Lembar Identitas Murid Wali A-E + foto (guru_wali/admin)
+│   │   │   └── work-plan.ts            # §7.0b Matriks Rencana Kerja (guru_wali-only)
 │   │   ├── jobs/
 │   │   │   ├── ews-snapshot-job.ts     # §5.4 logika job batch, dipanggil script CLI & endpoint cron
 │   │   │   └── dapodik-sync-job.ts     # §5.5 logika sync Dapodik -> students/classes
@@ -92,6 +99,8 @@ app/
 │   │   ├── ai-providers.ts             # §5.2 adapter multi-provider CHAT (openai/openrouter/gemini/custom)
 │   │   ├── dapodik.ts                  # §5.5 client Web Service Dapodik (dibangun dari nol, terverifikasi manual)
 │   │   ├── ticket-workflow.ts          # §6 state machine SOP Kolaborasi
+│   │   ├── file-storage.ts             # §7.0c storage berkas lokal (SK Guru Wali, foto murid) — path statis, LIHAT komentar di file
+│   │   ├── text-helpers.ts             # `linesToArray`/`arrayToLines` — konversi textarea <-> field array jsonb, dipakai journal.ts & student-profile.ts
 │   │   └── utils.ts
 │   ├── db/
 │   │   ├── schema.ts                   # single source of truth skema (Drizzle)
@@ -390,7 +399,35 @@ Struktur:
 - **Panel Progres SMART Goals** (kanan, `lg:col-span-2`): horizontal bar chart (Recharts) + daftar progress bar per target.
 - **Tabel Daftar Murid Binaan**: kehadiran, tren nilai, status risiko — untuk scan cepat seluruh murid binaan sepanjang tahun ajaran.
 
-Halaman dashboard Guru Wali lain: `journal/` (4 jenis form: konsultasi, kolaborasi, bimbingan kelompok, home visit), `reflections/`, `smart-goals/`, `tickets/`, `psychometric/` (§5.1), `ai-assistant/` — masing-masing punya Server Action pasangan di `src/lib/actions/`.
+Halaman dashboard Guru Wali lain: `journal/` (4 jenis form: konsultasi, kolaborasi, bimbingan kelompok, home visit), `reflections/`, `smart-goals/`, `tickets/`, `psychometric/` (§5.1), `ai-assistant/`, `students/` & `work-plan/` (§7.0b di bawah) — masing-masing punya Server Action pasangan di `src/lib/actions/`.
+
+### 7.0b Murid Saya (Lembar Identitas Murid Wali) & Matriks Rencana Kerja
+
+Ditambahkan setelah analisis mendalam folder `referensi/` (2026-09-22) menemukan bahwa 4 tabel skema — `student_profiles`, `student_academic_history`, `student_achievements`, `work_plan_items` — sudah ada **sejak awal proyek** tapi **tidak dipakai satu pun halaman/Server Action**, walau justru ini bagian yang paling ditekankan dokumen referensi ("Guru Wali dapat mengenal lebih dekat murid... sehingga pendampingan tidak bersifat umum, melainkan personal").
+
+**`/dashboard/students`** (`src/app/dashboard/students/page.tsx` + `[id]/page.tsx`, actions di `src/lib/actions/student-profile.ts`) — Lembar Identitas Murid Wali lengkap per murid binaan:
+- **A. Identitas Dasar** — field `students` yang sebelumnya HANYA bisa terisi lewat sinkronisasi Dapodik (nama panggilan, tempat/tgl lahir, agama, alamat, anak ke-berapa, no HP, medsos, penyakit kronis) kini bisa diisi/diedit manual.
+- **B. Identitas Orang Tua** — upsert `student_guardians` (pola select-then-insert-or-update yang sama dipakai di seluruh proyek), melengkapi data yang Dapodik sudah isi otomatis.
+- **C. Riwayat Pendidikan & Prestasi** — `student_academic_history` (TK/SD/SMP, tahun masuk-keluar) + `student_achievements` (jenjang, akademik/non-akademik) — tambah/hapus baris.
+- **D. Aspirasi Studi Lanjut & Karier** — `student_profiles` (cita-cita, mapel favorit/lemah, hobi, skill sudah/ingin dikuasai, hambatan akademik/keluarga/finansial).
+- **E. Karakter & Sosial-Emosional** — `student_profiles` (disiplin, empati, regulasi emosi, refleksi diri 3-kata).
+
+**D dan E disimpan di baris `student_profiles` yang SAMA tapi lewat 2 Server Action TERPISAH** (`updateStudentAspirationsAction`/`updateStudentCharacterAction`), masing-masing hanya meng-`UPDATE` kolom bagian dirinya sendiri — supaya submit salah satu form tidak menghapus data bagian yang lain (diverifikasi lewat pengujian: isi D dulu, lalu isi E, keduanya tetap utuh sekaligus).
+
+Otorisasi (`requireStudentAccess()`): **Guru Wali untuk murid binaan aktifnya sendiri** (`isOwnActiveStudent`) **atau Admin untuk murid di sekolahnya** (`assertSameSchool` setara) — bukan sekadar cek role, konsisten dengan pola §8/§11 poin 5. Link nav "Murid Saya" ada di `GURU_WALI_NAV` **dan** `ADMIN_NAV` (`src/app/dashboard/layout.tsx`) supaya akses Admin yang sudah didukung Server Action-nya juga bisa dijangkau lewat UI, bukan cuma lewat mengetik URL langsung (awalnya sempat tertinggal hanya di nav Guru Wali — ditemukan & diperbaiki 2026-09-22 saat menyinkronkan `help-content.ts`).
+
+**`/dashboard/work-plan`** (`src/lib/actions/work-plan.ts`) — Matriks Rencana Kerja: tabel kegiatan × bulan (Jul-Jun) dikelompokkan 3 kategori (persiapan/pelaksanaan/evaluasi), persis struktur `5. Matriks Rencana Kerja.xlsx`. Tombol **"Pakai Template Resmi"** (`seedOfficialTemplateAction`) mengisi 11 kegiatan baku dari spreadsheet aslinya sekali sebagai titik awal (ditolak kalau sudah ada kegiatan — hapus dulu semua untuk mulai ulang dari template), Guru Wali bebas menambah/menghapus setelahnya.
+
+### 7.0c Upload Berkas — SK Guru Wali & Foto Murid
+File: `src/lib/file-storage.ts`, `src/app/api/files/sk-guru-wali/[assignmentId]/route.ts`, `src/app/api/files/student-photo/[studentId]/route.ts`.
+
+`guruWaliAssignments.skFileUrl` dan `students.photoUrl` sudah ada di skema sejak awal tapi baru sekarang punya cara diisi — SIGW sebelumnya **tidak punya infrastruktur upload berkas sama sekali**. Ini penting karena Kepmendikdasmen 221/P/2025 eksplisit mewajibkan "Persyaratan Administratif: ... wajib dibuktikan melalui Surat Keputusan (SK) sebagai Guru Wali" sebagai bukti fisik.
+
+**Disimpan di disk lokal** (`<app-root>/uploads/{sk-guru-wali,student-photo}/<uuid>.<ext>`, **bukan** `public/` dan **bukan** cloud/S3) — SIGW ditujukan untuk deploy VPS mandiri satu sekolah (DEPLOYMENT.md), menambah dependensi cloud storage untuk ini tidak proporsional untuk skala itu. Path root SENGAJA **statis** (`path.join(process.cwd(), "uploads")`, bukan dari env var) — versi awal sempat pakai `process.env.UPLOADS_DIR`, tapi Turbopack terbukti tidak bisa menganalisis path yang bergantung env var saat build dan defensif men-trace **seluruh proyek** ke output server (bloat ukuran deploy signifikan, ketahuan lewat `bun run build`, bukan `next dev`).
+
+Disajikan lewat **route Next.js ber-otorisasi** (bukan link `public/` langsung) — cek yang SAMA PERSIS dengan aksi datanya sendiri (admin sekolah yang sama, atau guru wali/pemilik SK yang bersangkutan) sebelum stream isi berkas; kolom DB cuma menyimpan **nama file** hasil `randomUUID()`, bukan path/URL, supaya skema penyimpanan bisa berubah tanpa migrasi data. Validasi: PDF/JPG/PNG/WEBP saja, maks 10MB.
+
+**Keterbatasan yang diketahui**: menghapus baris `guru_wali_assignments`/`students` tidak otomatis menghapus berkas fisiknya di disk (jadi orphan) — belum ada job pembersihan berkala untuk ini; dampaknya kecil karena kedua alur hapus itu jarang dipakai (assignment cuma di-nonaktifkan lewat "Akhiri", bukan dihapus; belum ada fitur hapus murid).
 
 ### 7.1 Halaman Kolaborasi (Kepala Sekolah / Guru BK / Wali Kelas / Guru Mapel)
 File: `src/app/dashboard/collaboration/page.tsx`.
@@ -423,6 +460,28 @@ Dokumentasi end-user (bukan developer — untuk itu ada dokumen ini) langsung di
 - Halaman terbuka otomatis pada panduan role yang sedang login (`defaultRole`), tapi pengguna bebas berpindah ke panduan role lain lewat tombol di sisi kiri — berguna misalnya buat Admin yang ingin paham alur kerja Guru Wali tanpa perlu login dua akun.
 
 **Wajib disinkronkan**: setiap kali menambah/mengubah fitur yang terlihat pengguna (menu baru, field baru, alur SOP berubah, label tombol berubah), perbarui juga `help-content.ts` di role yang relevan — dokumen ini gampang basi kalau dilupakan karena tidak ada test yang mengecek kecocokannya dengan UI sungguhan.
+
+### 7.4 Alur Kerja / Flowchart Interaktif (`/dashboard/flow`)
+File: `src/app/dashboard/flow/page.tsx`, `src/components/dashboard/flow/flow-chart.tsx` (client), `src/components/dashboard/flow/flow-content.ts` (data).
+
+Satu diagram alur kerja SIGW end-to-end, lintas **semua role** dalam satu gambar (bukan per-role terpisah seperti §7.3) — dibagi 3 tahap: (1) Admin menyiapkan data induk (Dapodik → tahun ajaran → kelas → murid → pengguna → penugasan Guru Wali), (2) Guru Wali bekerja sehari-hari (Dashboard EWS → 7 tool: Murid Saya, Jurnal, SMART Goals, Refleksi, Asesmen, Matriks Rencana Kerja, AI Assistant), (3) SOP Tiket Kolaborasi lengkap dengan percabangan keputusan (Ada Temuan?/Jalur A vs B/Ringan-Sedang vs Berat), sampai eskalasi Kepala Sekolah. Dapat diakses semua role lewat link "Alur Kerja" di nav header.
+
+- **Data node terpusat** di `flow-content.ts` (`FLOW_NODES: Record<string, FlowNode>`) — tiap node punya `role` pemilik langkah & `href` halaman aslinya. Menambah langkah baru ke alur = tambah 1 entri di sini, lalu referensikan `id`-nya di layout JSX `flow-chart.tsx`.
+- **Interaksi bergantung role yang login** (`session.user.role`, di-pass dari Server Component `page.tsx` ke Client Component): node milik role yang sedang login dirender sebagai `<Link>` sungguhan (cincin biru, langsung buka halamannya) — node milik role lain dirender sebagai `<button>` yang membuka modal penjelasan singkat, TIDAK mencoba navigasi ke halaman yang memang bukan haknya. Pola ini hasil keputusan eksplisit (bukan grey-out non-interaktif) supaya user tetap bisa pelajari alur kerja role lain dari satu halaman yang sama.
+- **Layout flowchart dibuat manual pakai Tailwind (flex/grid + `border-t`/`border-l` sebagai garis penghubung)**, BUKAN library diagram (reactflow dkk.) — konsisten dengan filosofi proyek untuk tidak menambah dependensi kalau CSS biasa sudah cukup. Percabangan SOP (mis. Jalur A/B) dirender lewat komponen `BranchRow`/`Branch` yang generik untuk 2+ opsi bersebelahan.
+- **Sengaja tidak menggambar ulang panah reconverge** setelah percabangan "Berat" (Eskalasi Kepsek) kembali ke Finalisasi Laporan — cukup catatan teks singkat di bawah node, karena menghitung ulang path SVG untuk 1 kasus jarang tidak sepadan kompleksitasnya.
+
+### 7.5 Sistem Desain — Primitive Form (`src/components/ui/`)
+
+Audit UI/UX menyeluruh (2026-09-22) menemukan **30 file** menulis ulang `<input>` manual, **12 file** `<textarea>`, **16 file** `<select>`, dan **11 file** `<button>` mentah — semua dengan class Tailwind diketik ulang per file, bukan disalin dari satu sumber. Diselesaikan dengan primitive baru, lalu SEMUA pemakaian di atas dimigrasikan (bukan cuma ditambahkan sebagai opsi):
+
+- **`input.tsx`** — ekspor `inputClassName` (dipakai ulang oleh `textarea.tsx`/`select.tsx` supaya border/fokus/disabled selalu senada) dan komponen `Input`. `text-[16px] sm:text-sm` SENGAJA beda mobile vs desktop — di bawah 16px, Safari iOS auto-zoom saat field difokus.
+- **`select.tsx`** — native `<select>` + ikon `ChevronDown` (Lucide, sudah jadi dependensi proyek) yang diposisikan absolut, BUKAN SVG data-URI di CSS (gampang salah escape). Ikon chevron otomatis disembunyikan kalau prop `multiple` true — select multi-baris dirender browser sebagai listbox, bukan dropdown, jadi ikon dropdown di situ menyesatkan.
+- **`checkbox.tsx`** — ekspor `Checkbox` dan `Radio` (varian `rounded-full`), dipakai di 5 file yang sebelumnya pakai `<input type="checkbox"/radio">` polos tanpa focus ring konsisten.
+- **`field.tsx`** — bungkus `Label` + input + pesan `hint`/`error`, pola `flex flex-col gap-1` yang sebelumnya ditulis ulang manual di hampir semua form. Terima `labelClassName` supaya form padat di Panel Admin bisa tetap pakai label `text-xs` tanpa styling manual berulang.
+- **Form compact** (baris tambah-cepat di `history-achievements-form.tsx`, `work-plan-table.tsx`) override `inputClassName` lewat `className` (mis. `h-8 px-2 py-1.5 text-xs`) — `cn()`/`tailwind-merge` menyelesaikan konflik kelas, jadi override selalu menang tanpa perlu `!important`.
+
+**Wajib dipakai untuk form baru**: field teks/angka/tanggal → `Input`, area teks → `Textarea`, dropdown → `Select`, centang → `Checkbox`/`Radio`, tombol → `Button` (jangan `<button>` mentah) — supaya konsistensi ini tidak basi lagi seperti sebelum audit ini.
 
 ---
 
@@ -479,6 +538,7 @@ Semua item berikut sudah pernah dilacak sebagai gap dan **sudah dikerjakan** pad
 - ✅ NIP guru otomatis terisi lewat `getGtk` (endpoint tidak terdokumentasi resmi, ditemukan lewat pengujian empiris) — fill-if-empty, tidak menimpa NIP yang sudah diisi manual (§5.5).
 - ✅ Reset-on-demand untuk password guru yang lupa (`resetUserPasswordAction`, tombol di kartu "Pengguna" Panel Admin) — dipakai juga untuk akun hasil sinkronisasi Dapodik, tanpa perlu menyimpan password plaintext permanen (§7.2, §11 poin 11).
 - ✅ Siswa → Guru Wali lewat import Excel (opsi (a) dari tiga opsi yang didiskusikan — dipilih karena Dapodik terbukti belum mengekspos rombel Wali lewat webservice) — template dengan dropdown NIK/NISN + auto-lookup nama, dicocokkan lewat NIK/NISN, promosi role otomatis, ganti penugasan lama otomatis (§7.2).
+- ✅ Lembar Identitas Murid Wali (Bagian A/B/C/D/E) + Matriks Rencana Kerja + upload SK Guru Wali & foto murid — ditemukan lewat analisis folder `referensi/` bahwa `student_profiles`/`student_academic_history`/`student_achievements`/`work_plan_items` sudah ada di skema sejak awal tapi 0% terhubung ke UI, dan `skFileUrl`/`photoUrl` tidak ada infrastruktur upload sama sekali (§7.0b, §7.0c).
 
 **Yang masih terbuka** (audit jujur, supaya developer lanjutan tahu persis di mana berhenti):
 

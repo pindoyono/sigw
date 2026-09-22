@@ -3,6 +3,9 @@
 import { useActionState } from "react";
 import { createUserAction } from "@/lib/actions/admin";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Field } from "@/components/ui/field";
 
 const ROLE_OPTIONS: { value: string; label: string }[] = [
   { value: "guru_wali", label: "Guru Wali" },
@@ -19,33 +22,28 @@ export function CreateUserForm() {
   return (
     <form action={formAction} className="flex flex-col gap-3">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-5">
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-slate-600">Nama</label>
-          <input name="name" required className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-slate-600">Email</label>
-          <input type="email" name="email" required className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-slate-600">Kata Sandi Awal</label>
-          <input type="password" name="password" required minLength={8} className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-slate-600">Peran</label>
-          <select name="role" required className="rounded-md border border-slate-300 px-3 py-2 text-sm">
+        <Field label="Nama" htmlFor="user-name" labelClassName="text-xs">
+          <Input id="user-name" name="name" required />
+        </Field>
+        <Field label="Email" htmlFor="user-email" labelClassName="text-xs">
+          <Input id="user-email" type="email" name="email" required />
+        </Field>
+        <Field label="Kata Sandi Awal" htmlFor="user-password" labelClassName="text-xs">
+          <Input id="user-password" type="password" name="password" required minLength={8} />
+        </Field>
+        <Field label="Peran" htmlFor="user-role" labelClassName="text-xs">
+          <Select id="user-role" name="role" required defaultValue="">
             <option value="">Pilih...</option>
             {ROLE_OPTIONS.map((r) => (
               <option key={r.value} value={r.value}>
                 {r.label}
               </option>
             ))}
-          </select>
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-slate-600">NIP (opsional)</label>
-          <input name="nip" className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
-        </div>
+          </Select>
+        </Field>
+        <Field label="NIP (opsional)" htmlFor="user-nip" labelClassName="text-xs">
+          <Input id="user-nip" name="nip" />
+        </Field>
       </div>
       {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
       <Button type="submit" disabled={pending} className="self-start">

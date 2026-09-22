@@ -50,8 +50,11 @@ export type UserRole = (typeof userRoleEnum.enumValues)[number];
 
 export const genderEnum = pgEnum("gender", ["laki_laki", "perempuan"]);
 export const parentRelationEnum = pgEnum("parent_relation", ["kandung", "tiri"]);
+export type ParentRelation = (typeof parentRelationEnum.enumValues)[number];
 export const educationLevelEnum = pgEnum("education_level", ["tk", "sd", "smp", "sma_smk"]);
+export type EducationLevel = (typeof educationLevelEnum.enumValues)[number];
 export const achievementCategoryEnum = pgEnum("achievement_category", ["akademik", "non_akademik"]);
+export type AchievementCategory = (typeof achievementCategoryEnum.enumValues)[number];
 
 export const serviceOrientationEnum = pgEnum("service_orientation", [
   "akademik",

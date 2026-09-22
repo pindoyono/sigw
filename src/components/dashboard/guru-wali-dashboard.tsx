@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   Bar,
   BarChart,
@@ -106,7 +107,9 @@ export function GuruWaliDashboard({ teacherName, students, smartGoals }: GuruWal
               <div key={s.studentId} className="rounded-lg border border-slate-100 p-3">
                 <div className="flex items-center justify-between gap-2">
                   <div>
-                    <p className="text-sm font-medium text-slate-900">{s.fullName}</p>
+                    <Link href={`/dashboard/students/${s.studentId}`} className="text-sm font-medium text-slate-900 hover:text-blue-600 hover:underline">
+                      {s.fullName}
+                    </Link>
                     <p className="text-xs text-slate-500">{s.className}</p>
                   </div>
                   <div className="flex items-center gap-2">

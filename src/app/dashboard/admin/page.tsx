@@ -4,6 +4,7 @@ import { schools, schoolYears, classes, students, users, guruWaliAssignments, ai
 import { eq, and, desc } from "drizzle-orm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { CreateSchoolYearForm } from "@/components/dashboard/admin/create-school-year-form";
 import { CreateClassForm } from "@/components/dashboard/admin/create-class-form";
 import { CreateStudentForm } from "@/components/dashboard/admin/create-student-form";
@@ -11,6 +12,7 @@ import { CreateUserForm } from "@/components/dashboard/admin/create-user-form";
 import { UserList } from "@/components/dashboard/admin/user-list";
 import { CreateAssignmentForm } from "@/components/dashboard/admin/create-assignment-form";
 import { GuruWaliImportForm } from "@/components/dashboard/admin/guru-wali-import-form";
+import { SkUploadForm } from "@/components/dashboard/admin/sk-upload-form";
 import { AiProviderConfigForm } from "@/components/dashboard/admin/ai-provider-config-form";
 import { DapodikConfigForm } from "@/components/dashboard/admin/dapodik-config-form";
 import { endGuruWaliAssignmentAction } from "@/lib/actions/admin";
@@ -78,6 +80,7 @@ export default async function AdminPage() {
       studentName: students.fullName,
       startDate: guruWaliAssignments.startDate,
       skNumber: guruWaliAssignments.skNumber,
+      skFileUrl: guruWaliAssignments.skFileUrl,
     })
     .from(guruWaliAssignments)
     .innerJoin(users, eq(guruWaliAssignments.teacherId, users.id))
@@ -197,17 +200,20 @@ export default async function AdminPage() {
           <div className="flex flex-col gap-2 border-t border-slate-100 pt-3">
             {assignmentRows.length === 0 && <p className="text-xs text-slate-400">Belum ada penugasan aktif.</p>}
             {assignmentRows.map((a) => (
-              <div key={a.id} className="flex items-center justify-between gap-2 rounded-md bg-slate-50 p-2 text-xs">
+              <div key={a.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-slate-50 p-2 text-xs">
                 <span>
                   <span className="font-medium">{a.teacherName}</span> → {a.studentName} · sejak {a.startDate}
                   {a.skNumber ? ` · SK ${a.skNumber}` : ""}
                 </span>
-                <form action={endGuruWaliAssignmentAction}>
-                  <input type="hidden" name="assignmentId" value={a.id} />
-                  <button type="submit" className="text-red-600 underline hover:text-red-700">
-                    Akhiri
-                  </button>
-                </form>
+                <div className="flex items-center gap-3">
+                  <SkUploadForm assignmentId={a.id} hasFile={!!a.skFileUrl} />
+                  <form action={endGuruWaliAssignmentAction}>
+                    <input type="hidden" name="assignmentId" value={a.id} />
+                    <Button type="submit" variant="ghost" size="sm" className="text-red-600 hover:bg-red-50 hover:text-red-700">
+                      Akhiri
+                    </Button>
+                  </form>
+                </div>
               </div>
             ))}
           </div>
@@ -249,9 +255,9 @@ export default async function AdminPage() {
             )}
             {activeAiConfig && (
               <form action={deactivateAllAiProviderConfigsAction} className="mt-2">
-                <button type="submit" className="text-xs text-red-600 underline hover:text-red-700">
+                <Button type="submit" variant="ghost" size="sm" className="text-red-600 hover:bg-red-50 hover:text-red-700">
                   Nonaktifkan, kembali ke mode offline
-                </button>
+                </Button>
               </form>
             )}
           </div>
@@ -277,16 +283,16 @@ export default async function AdminPage() {
                     {!c.isActive && (
                       <form action={activateAiProviderConfigAction}>
                         <input type="hidden" name="configId" value={c.id} />
-                        <button type="submit" className="text-blue-600 underline hover:text-blue-700">
+                        <Button type="submit" variant="ghost" size="sm" className="text-blue-600 hover:bg-blue-50">
                           Aktifkan
-                        </button>
+                        </Button>
                       </form>
                     )}
                     <form action={deleteAiProviderConfigAction}>
                       <input type="hidden" name="configId" value={c.id} />
-                      <button type="submit" className="text-red-600 underline hover:text-red-700">
+                      <Button type="submit" variant="ghost" size="sm" className="text-red-600 hover:bg-red-50 hover:text-red-700">
                         Hapus
-                      </button>
+                      </Button>
                     </form>
                   </span>
                 </div>

@@ -3,6 +3,11 @@
 import { useActionState } from "react";
 import { submitPsychometricAssessmentAction } from "@/lib/actions/psychometrics";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Radio } from "@/components/ui/checkbox";
+import { Field } from "@/components/ui/field";
 import type { PsychometricItem } from "@/lib/psychometrics";
 
 interface StudentOption {
@@ -50,21 +55,19 @@ export function PsychometricAssessmentForm({
       <input type="hidden" name="instrumentId" value={instrument.id} />
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-slate-600">Murid</label>
-          <select name="studentId" required className="rounded-md border border-slate-300 px-3 py-2 text-sm">
+        <Field label="Murid" htmlFor="psy-student" labelClassName="text-xs">
+          <Select id="psy-student" name="studentId" required defaultValue="">
             <option value="">Pilih murid...</option>
             {students.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.fullName}
               </option>
             ))}
-          </select>
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-slate-600">Tanggal Pengisian</label>
-          <input type="date" name="filledAt" required className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
-        </div>
+          </Select>
+        </Field>
+        <Field label="Tanggal Pengisian" htmlFor="psy-date" labelClassName="text-xs">
+          <Input id="psy-date" type="date" name="filledAt" required />
+        </Field>
       </div>
 
       <div className="flex flex-col divide-y divide-slate-100 rounded-md border border-slate-200">
@@ -81,7 +84,7 @@ export function PsychometricAssessmentForm({
                 <div className="flex shrink-0 gap-3">
                   {scalePoints.map((point) => (
                     <label key={point} className="flex flex-col items-center gap-0.5 text-[10px] text-slate-500">
-                      <input type="radio" name={`item_${item.id}`} value={point} required className="h-3.5 w-3.5" />
+                      <Radio name={`item_${item.id}`} value={point} required className="h-3.5 w-3.5" />
                       {instrument.scaleLabels[point - instrument.scaleMin] ?? point}
                     </label>
                   ))}
@@ -92,10 +95,9 @@ export function PsychometricAssessmentForm({
         })}
       </div>
 
-      <div className="flex flex-col gap-1">
-        <label className="text-xs font-medium text-slate-600">Catatan Guru Wali (opsional)</label>
-        <textarea name="notes" rows={2} className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
-      </div>
+      <Field label="Catatan Guru Wali (opsional)" htmlFor="psy-notes" labelClassName="text-xs">
+        <Textarea id="psy-notes" name="notes" rows={2} />
+      </Field>
 
       {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
       <Button type="submit" disabled={pending} className="self-start">

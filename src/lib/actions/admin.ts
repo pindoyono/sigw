@@ -7,6 +7,7 @@ import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { generateTempPassword } from "@/lib/temp-password";
+import { saveUploadedFile, deleteStoredFile, FileStorageError } from "@/lib/file-storage";
 
 async function requireAdmin() {
   const session = await auth();
@@ -232,4 +233,42 @@ export async function resetUserPasswordAction(_prevState: ResetPasswordState, fo
 
   revalidatePath("/dashboard/admin");
   return { tempPassword };
+}
+
+/**
+ * Bukti fisik SK Guru Wali — wajib per Kepmendikdasmen 221/P/2025
+ * ("Persyaratan Administratif: ... wajib dibuktikan melalui Surat Keputusan
+ * (SK) sebagai Guru Wali"). Kolom `skFileUrl` sudah ada di skema sejak awal
+ * tapi baru sekarang punya cara diisi — lihat `src/lib/file-storage.ts`
+ * untuk alasan disimpan di disk lokal (bukan cloud) dan disajikan lewat
+ * `/api/files/sk-guru-wali/[assignmentId]` (bukan `public/`, supaya tetap
+ * lewat pengecekan otorisasi).
+ */
+export async function uploadSkFileAction(_prevState: { error?: string } | undefined, formData: FormData): Promise<{ error?: string }> {
+  const admin = await requireAdmin();
+
+  const assignmentId = formData.get("assignmentId");
+  const file = formData.get("file");
+  if (typeof assignmentId !== "string" || !assignmentId) return { error: "Penugasan tidak valid." };
+  if (!(file instanceof File) || file.size === 0) return { error: "Pilih berkas SK (PDF/JPG/PNG) terlebih dahulu." };
+
+  const [assignment] = await db.select().from(guruWaliAssignments).where(eq(guruWaliAssignments.id, assignmentId));
+  if (!assignment) return { error: "Penugasan tidak ditemukan." };
+
+  const [student] = await db.select({ schoolId: students.schoolId }).from(students).where(eq(students.id, assignment.studentId));
+  if (!student) return { error: "Murid pada penugasan ini tidak ditemukan." };
+  await assertSameSchool(student.schoolId, admin.schoolId);
+
+  let filename: string;
+  try {
+    filename = await saveUploadedFile(file, "sk-guru-wali");
+  } catch (err) {
+    return { error: err instanceof FileStorageError ? err.message : "Gagal menyimpan berkas." };
+  }
+
+  if (assignment.skFileUrl) await deleteStoredFile("sk-guru-wali", assignment.skFileUrl);
+  await db.update(guruWaliAssignments).set({ skFileUrl: filename }).where(eq(guruWaliAssignments.id, assignmentId));
+
+  revalidatePath("/dashboard/admin");
+  return {};
 }

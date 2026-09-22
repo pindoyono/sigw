@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# berkas upload pengguna (SK Guru Wali, foto murid) — data sekolah nyata,
+# jangan pernah masuk git; lihat src/lib/file-storage.ts & DEPLOYMENT.md
+/uploads

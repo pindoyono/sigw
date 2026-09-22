@@ -46,7 +46,7 @@ export function GuruWaliImportForm() {
           name="file"
           accept=".xlsx"
           required
-          className="text-xs file:mr-2 file:rounded-md file:border file:border-slate-300 file:bg-white file:px-2 file:py-1 file:text-xs"
+          className="text-xs text-slate-500 file:mr-2 file:rounded-md file:border-0 file:bg-slate-100 file:px-2 file:py-1 file:text-xs file:font-medium file:text-slate-700 hover:file:bg-slate-200"
         />
         <Button type="submit" disabled={pending} size="sm">
           {pending ? "Memproses..." : "Import"}

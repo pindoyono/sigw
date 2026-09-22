@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { submitTicketTransition } from "@/lib/actions/tickets";
 import { TICKET_STATUS_LABELS, type TicketStatus } from "@/lib/ticket-workflow";
 
@@ -47,16 +48,9 @@ function ActionButton({
         Object.entries(extraFields).map(([key, value]) => (
           <input key={key} type="hidden" name={key} value={value} />
         ))}
-      <button
-        type="submit"
-        className={
-          variant === "outline"
-            ? "rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-            : "rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
-        }
-      >
+      <Button type="submit" variant={variant} size="sm">
         {children}
-      </button>
+      </Button>
     </form>
   );
 }

@@ -3,6 +3,9 @@
 import { useActionState, useState } from "react";
 import { saveAiProviderConfigAction } from "@/lib/actions/ai-config";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Field } from "@/components/ui/field";
 
 const PROVIDER_OPTIONS: { value: string; label: string; hint: string }[] = [
   { value: "openai", label: "OpenAI", hint: "api.openai.com — model default gpt-4o-mini" },
@@ -18,59 +21,50 @@ export function AiProviderConfigForm() {
   return (
     <form action={formAction} className="flex flex-col gap-3">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-slate-600">Provider</label>
-          <select
-            name="provider"
-            required
-            value={provider}
-            onChange={(e) => setProvider(e.target.value)}
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-          >
+        <Field
+          label="Provider"
+          htmlFor="ai-provider"
+          labelClassName="text-xs"
+          hint={PROVIDER_OPTIONS.find((p) => p.value === provider)?.hint}
+        >
+          <Select id="ai-provider" name="provider" required value={provider} onChange={(e) => setProvider(e.target.value)}>
             {PROVIDER_OPTIONS.map((p) => (
               <option key={p.value} value={p.value}>
                 {p.label}
               </option>
             ))}
-          </select>
-          <p className="text-[11px] text-slate-400">{PROVIDER_OPTIONS.find((p) => p.value === provider)?.hint}</p>
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-slate-600">Label (opsional)</label>
-          <input name="label" placeholder="mis. Akun OpenRouter sekolah" className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
-        </div>
+          </Select>
+        </Field>
+        <Field label="Label (opsional)" htmlFor="ai-label" labelClassName="text-xs">
+          <Input id="ai-label" name="label" placeholder="mis. Akun OpenRouter sekolah" />
+        </Field>
       </div>
 
-      <div className="flex flex-col gap-1">
-        <label className="text-xs font-medium text-slate-600">API Key</label>
-        <input
-          type="password"
-          name="apiKey"
-          required
-          minLength={8}
-          autoComplete="off"
-          placeholder="sk-..."
-          className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-        />
-        <p className="text-[11px] text-slate-400">Disimpan di server, tidak pernah ditampilkan utuh lagi setelah disimpan.</p>
-      </div>
+      <Field
+        label="API Key"
+        htmlFor="ai-key"
+        labelClassName="text-xs"
+        hint="Disimpan di server, tidak pernah ditampilkan utuh lagi setelah disimpan."
+      >
+        <Input id="ai-key" type="password" name="apiKey" required minLength={8} autoComplete="off" placeholder="sk-..." />
+      </Field>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-slate-600">
-            Base URL {provider === "custom" && <span className="text-red-500">*wajib</span>}
-          </label>
-          <input
+        <Field
+          label={<>Base URL {provider === "custom" && <span className="text-red-500">*wajib</span>}</>}
+          htmlFor="ai-base-url"
+          labelClassName="text-xs"
+        >
+          <Input
+            id="ai-base-url"
             name="baseUrl"
             required={provider === "custom"}
             placeholder={provider === "custom" ? "https://api.provider-lain.com/v1" : "Kosongkan untuk pakai default"}
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
           />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-slate-600">Model Chat (opsional)</label>
-          <input name="chatModel" placeholder="Kosongkan untuk pakai default" className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
-        </div>
+        </Field>
+        <Field label="Model Chat (opsional)" htmlFor="ai-chat-model" labelClassName="text-xs">
+          <Input id="ai-chat-model" name="chatModel" placeholder="Kosongkan untuk pakai default" />
+        </Field>
       </div>
 
       {state?.error && <p className="text-sm text-red-600">{state.error}</p>}

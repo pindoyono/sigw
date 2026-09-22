@@ -17,6 +17,8 @@ const ROLE_LABELS: Record<UserRole, string> = {
 /** Menu per peran — halaman Guru Wali hanya render lengkap untuk role itu sendiri (lihat masing-masing page.tsx). */
 const GURU_WALI_NAV = [
   { href: "/dashboard", label: "Dashboard" },
+  { href: "/dashboard/students", label: "Murid Saya" },
+  { href: "/dashboard/work-plan", label: "Matriks Rencana Kerja" },
   { href: "/dashboard/tickets", label: "Tiket Kolaborasi" },
   { href: "/dashboard/smart-goals", label: "Target SMART" },
   { href: "/dashboard/journal", label: "Jurnal" },
@@ -26,16 +28,20 @@ const GURU_WALI_NAV = [
 ];
 
 const COLLABORATOR_NAV = [{ href: "/dashboard/collaboration", label: "Tiket Kolaborasi" }];
-const ADMIN_NAV = [{ href: "/dashboard/admin", label: "Panel Admin" }];
+const ADMIN_NAV = [
+  { href: "/dashboard/admin", label: "Panel Admin" },
+  { href: "/dashboard/students", label: "Murid Saya" },
+];
+const FLOW_NAV_ITEM = { href: "/dashboard/flow", label: "Alur Kerja" };
 const HELP_NAV_ITEM = { href: "/dashboard/help", label: "Panduan" };
 
 function navForRole(role: UserRole) {
-  if (role === "guru_wali") return [...GURU_WALI_NAV, HELP_NAV_ITEM];
-  if (role === "admin") return [...ADMIN_NAV, HELP_NAV_ITEM];
+  if (role === "guru_wali") return [...GURU_WALI_NAV, FLOW_NAV_ITEM, HELP_NAV_ITEM];
+  if (role === "admin") return [...ADMIN_NAV, FLOW_NAV_ITEM, HELP_NAV_ITEM];
   if (role === "kepala_sekolah" || role === "guru_bk" || role === "wali_kelas" || role === "guru_mapel") {
-    return [...COLLABORATOR_NAV, HELP_NAV_ITEM];
+    return [...COLLABORATOR_NAV, FLOW_NAV_ITEM, HELP_NAV_ITEM];
   }
-  return [HELP_NAV_ITEM];
+  return [FLOW_NAV_ITEM, HELP_NAV_ITEM];
 }
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
