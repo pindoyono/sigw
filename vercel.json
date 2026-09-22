@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/ews-snapshot",
+      "schedule": "0 20 * * *"
+    },
+    {
+      "path": "/api/cron/dapodik-sync",
+      "schedule": "30 20 * * *"
+    }
+  ]
+}
