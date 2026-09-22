@@ -348,6 +348,13 @@ export const ROLE_GUIDES: RoleGuide[] = [
         ],
       },
       {
+        id: "profil-sekolah",
+        title: "Profil Sekolah",
+        blocks: [
+          p("Kartu paling atas di Panel Admin — nama, NPSN, dan alamat sekolah Anda. Nama sekolah ini muncul di judul Dashboard dan di seluruh panel, jadi pastikan sudah sesuai kondisi sebenarnya (terutama kalau akun ini sebelumnya dipakai untuk mencoba fitur demo)."),
+        ],
+      },
+      {
         id: "tahun-ajaran",
         title: "Tahun Ajaran",
         blocks: [

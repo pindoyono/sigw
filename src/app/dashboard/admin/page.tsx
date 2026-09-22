@@ -12,6 +12,7 @@ import { CreateUserForm } from "@/components/dashboard/admin/create-user-form";
 import { UserList } from "@/components/dashboard/admin/user-list";
 import { CreateAssignmentForm } from "@/components/dashboard/admin/create-assignment-form";
 import { GuruWaliImportForm } from "@/components/dashboard/admin/guru-wali-import-form";
+import { EditSchoolForm } from "@/components/dashboard/admin/edit-school-form";
 import { AttendanceImportForm } from "@/components/dashboard/admin/attendance-import-form";
 import { AcademicScoresImportForm } from "@/components/dashboard/admin/academic-scores-import-form";
 import { SkUploadForm } from "@/components/dashboard/admin/sk-upload-form";
@@ -117,6 +118,16 @@ export default async function AdminPage() {
           Kelola tahun ajaran, kelas, murid, pengguna, dan penugasan Guru Wali untuk {school?.name ?? "sekolah Anda"}.
         </p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Profil Sekolah</CardTitle>
+          <CardDescription>Nama sekolah ini muncul di seluruh dashboard & panel — pastikan sesuai kondisi sebenarnya</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <EditSchoolForm school={{ name: school?.name ?? "", npsn: school?.npsn ?? null, address: school?.address ?? null }} />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

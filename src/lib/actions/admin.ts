@@ -2,7 +2,7 @@
 
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { schoolYears, classes, students, users, guruWaliAssignments, type UserRole } from "@/db/schema";
+import { schools, schoolYears, classes, students, users, guruWaliAssignments, type UserRole } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
@@ -24,6 +24,39 @@ async function assertSameSchool(schoolId: string, adminSchoolId: string) {
   if (schoolId !== adminSchoolId) {
     throw new Error("Data tersebut berada di luar sekolah Anda.");
   }
+}
+
+/**
+ * Ditemukan 2026-09-23: `schools.name` sebelumnya cuma bisa diisi lewat `db:seed`
+ * (skrip demo — dipakai untuk MEMBUAT baris sekolah + akun Admin pertama), tapi
+ * tidak ada cara memperbaikinya lagi setelahnya. Konsekuensi nyata: sekolah yang
+ * demo-nya dijalankan lalu diisi data Dapodik SUNGGUHAN tetap tercatat bernama
+ * sekolah demo ("SMP Negeri 1 Contoh") selamanya, muncul salah di setiap
+ * dashboard/panel yang menampilkan nama sekolah — tidak ada jalan keluar selain
+ * UPDATE manual ke database. Action ini menutup itu: Admin sekarang bisa
+ * mengoreksi profil sekolahnya sendiri (nama/NPSN/alamat) kapan saja.
+ */
+export async function updateSchoolAction(_prevState: FormState, formData: FormData): Promise<FormState> {
+  const admin = await requireAdmin();
+
+  const name = formData.get("name");
+  const npsn = formData.get("npsn");
+  const address = formData.get("address");
+
+  if (typeof name !== "string" || !name.trim()) return { error: "Nama sekolah wajib diisi." };
+
+  await db
+    .update(schools)
+    .set({
+      name: name.trim(),
+      npsn: typeof npsn === "string" && npsn.trim() ? npsn.trim() : null,
+      address: typeof address === "string" && address.trim() ? address.trim() : null,
+    })
+    .where(eq(schools.id, admin.schoolId));
+
+  revalidatePath("/dashboard/admin");
+  revalidatePath("/dashboard");
+  return {};
 }
 
 export async function createSchoolYearAction(_prevState: FormState, formData: FormData): Promise<FormState> {

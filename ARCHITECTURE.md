@@ -468,6 +468,7 @@ Satu query universal: *"tiket di mana saya muncul di `ticket_collaborators`"*, d
 File: `src/app/dashboard/admin/page.tsx`, `src/lib/actions/admin.ts`, `src/components/dashboard/admin/*`.
 
 CRUD data master untuk role `admin`, di-scope ke `schoolId` admin yang login (satu admin = satu sekolah; cross-school hanya lewat `admin.schoolId`, lihat §9 untuk batasan ini):
+- **Profil Sekolah** (`updateSchoolAction`) — edit nama/NPSN/alamat sekolah sendiri. Ditambahkan 2026-09-23 setelah ditemukan sekolah yang `db:seed`-nya sempat dijalankan (demo) lalu diisi data Dapodik SUNGGUHAN tetap tercatat bernama sekolah demo ("SMP Negeri 1 Contoh") tanpa ada jalan memperbaikinya — nama itu muncul di HAMPIR SEMUA tempat (Dashboard §7.0, subjudul Panel Admin ini sendiri). Dipakai langsung untuk mengoreksi data sekolah produksi (nama jadi "SMK Negeri 2 Malinau", NPSN & alamat placeholder demo dikosongkan) — diverifikasi nyata lewat script sekali-pakai yang memanggil action ini, bukan `UPDATE` manual ke database.
 - **Tahun Ajaran** — buat baru; menandai satu sebagai aktif otomatis menonaktifkan yang lain (satu tahun ajaran aktif per sekolah).
 - **Kelas** — buat baru per tahun ajaran, opsional tetapkan Wali Kelas.
 - **Murid** — buat data murid baru (NISN, nama, gender, kelas).
@@ -571,6 +572,7 @@ Semua item berikut sudah pernah dilacak sebagai gap dan **sudah dikerjakan** pad
 - ✅ Lembar Identitas Murid Wali (Bagian A/B/C/D/E) + Matriks Rencana Kerja + upload SK Guru Wali & foto murid — ditemukan lewat analisis folder `referensi/` bahwa `student_profiles`/`student_academic_history`/`student_achievements`/`work_plan_items` sudah ada di skema sejak awal tapi 0% terhubung ke UI, dan `skFileUrl`/`photoUrl` tidak ada infrastruktur upload sama sekali (§7.0b, §7.0c).
 - ✅ Dashboard statistik per role (Admin/Kepala Sekolah/Guru BK/Wali Kelas/Guru Mapel) — sebelumnya kelima role ini langsung di-redirect menjauh dari `/dashboard` tanpa pernah melihat ringkasan statistik (§7.0).
 - ✅ Sumber data kehadiran & nilai untuk EWS — ditemukan lewat audit bahwa `attendance_records`/`academic_scores` (65% bobot EWS) tidak punya satu pun jalur pengisian data produksi; ditutup lewat import Excel dari rekap absensi kertas & leger guru mapel (§5.4b).
+- ✅ Profil Sekolah bisa dikoreksi Admin sendiri (nama/NPSN/alamat) — sebelumnya cuma bisa diisi sekali lewat `db:seed`, tidak ada jalan perbaikan; ditemukan karena sekolah produksi tercatat masih bernama sekolah demo (§7.2).
 
 **Yang masih terbuka** (audit jujur, supaya developer lanjutan tahu persis di mana berhenti):
 
