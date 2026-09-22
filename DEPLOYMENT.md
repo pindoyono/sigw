@@ -174,6 +174,8 @@ Login ke `https://<domain-anda>/login` dengan `admin@sigw.test` / `password123`,
 
 ## 7. Jalankan Aplikasi lewat systemd
 
+> **Kalau VPS ini dipakai bersama aplikasi lain** (bukan dedicated satu-aplikasi seperti asumsi panduan ini) — cek dulu port 3000 tidak dipakai proses lain (`ss -ltnp | grep :3000`) sebelum lanjut, atau ganti `PORT` di bawah. Kalau host itu sudah pakai PM2 untuk aplikasi Node lain (bukan systemd), lebih konsisten menambahkan SIGW ke PM2 juga lewat `ecosystem.config.js` di root proyek (`pm2 start ecosystem.config.js && pm2 save`) daripada mencampur 2 process manager berbeda di server yang sama — sesuaikan `PORT` di file itu ke port yang bebas.
+
 ```bash
 sudo tee /etc/systemd/system/sigw.service > /dev/null <<'EOF'
 [Unit]
