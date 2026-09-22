@@ -72,6 +72,9 @@ export const ROLE_GUIDES: RoleGuide[] = [
           note(
             "Skor risiko dihitung otomatis dan diperbarui setiap kali Anda membuka Dashboard — Anda tidak perlu menghitung atau mengisi apa pun secara manual. Angka ini adalah alat bantu prioritas, bukan penilaian akhir — tetap gunakan penilaian Anda sendiri sebagai Guru Wali.",
           ),
+          note(
+            "Data kehadiran & nilai berasal dari rekap Excel yang diunggah Admin (absensi kertas & leger guru mapel — Dapodik belum menyediakan keduanya) — kalau angkanya terasa belum sesuai kondisi terkini, kemungkinan rekap terbarunya belum diunggah, bukan murid tersebut yang salah data.",
+          ),
         ],
       },
       {
@@ -395,6 +398,24 @@ export const ROLE_GUIDES: RoleGuide[] = [
             "Klik 'Akhiri' pada penugasan yang sudah tidak berlaku (misalnya murid pindah Guru Wali) — murid tersebut baru bisa ditugaskan ke Guru Wali lain setelah penugasan lamanya diakhiri.",
           ),
           warning("Satu murid hanya boleh punya satu Guru Wali AKTIF pada satu waktu."),
+        ],
+      },
+      {
+        id: "kehadiran-nilai",
+        title: "Data Kehadiran & Nilai (untuk EWS)",
+        blocks: [
+          p(
+            "Early Warning System butuh data kehadiran dan tren nilai murid (35% + 30% dari skor risiko — komponen terbesar), tapi Dapodik TIDAK menyediakan keduanya lewat webservice-nya. Selama absensi masih dicatat manual di kertas dan nilai ada di leger guru mapel, kedua data ini masuk ke SIGW lewat import Excel.",
+          ),
+          steps(
+            "Unduh 'Template' pada bagian Rekap Kehadiran atau Import Nilai — sheet 'Referensi Murid' di dalamnya berisi NISN murid aktif terkini, dropdown NISN di sheet 'Import' mengacu ke situ (kolom Nama terisi otomatis untuk verifikasi).",
+            "Isi Rekap Kehadiran: 1 baris = kehadiran 1 murid pada 1 tanggal (Hadir/Sakit/Izin/Alpa). Bisa diisi bertahap per minggu/bulan, tidak harus sekaligus.",
+            "Isi Import Nilai: 1 baris = 1 nilai untuk 1 murid, 1 mata pelajaran, 1 periode (mis. \"2026-gasal-uas\").",
+            "Unggah file yang sudah diisi lewat tombol 'Import' — hasilnya langsung terlihat per baris (dicatat/diganti/gagal beserta alasannya).",
+          ),
+          note(
+            "Upload ulang untuk kombinasi yang sama (murid+tanggal untuk kehadiran, atau murid+mapel+periode untuk nilai) akan MENGGANTI data lama, bukan menduplikasi — aman dipakai untuk koreksi.",
+          ),
         ],
       },
       {

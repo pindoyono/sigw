@@ -6,6 +6,7 @@ import { users, students, guruWaliAssignments } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import ExcelJS from "exceljs";
+import { cellToString, cellToDateString } from "@/lib/excel-helpers";
 
 async function requireAdmin() {
   const session = await auth();
@@ -32,23 +33,6 @@ type ImportState =
   | { error: string; results?: undefined; summary?: undefined }
   | { error?: undefined; results: GuruWaliImportRowResult[]; summary: GuruWaliImportSummary }
   | undefined;
-
-function cellToString(value: ExcelJS.CellValue): string {
-  if (value == null) return "";
-  if (typeof value === "object" && "text" in value) return String((value as { text: unknown }).text ?? "").trim();
-  if (typeof value === "object" && "result" in value) return String((value as { result: unknown }).result ?? "").trim();
-  return String(value).trim();
-}
-
-function cellToDateString(value: ExcelJS.CellValue): string | null {
-  if (value == null) return null;
-  if (value instanceof Date) return value.toISOString().slice(0, 10);
-  const str = cellToString(value);
-  if (!str) return null;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
-  const parsed = new Date(str);
-  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString().slice(0, 10);
-}
 
 /**
  * Import massal Penugasan Guru Wali dari template Excel (`/api/admin/guru-wali-template`)

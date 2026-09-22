@@ -56,6 +56,8 @@ app/
 │   │   │   ├── cron/ews-snapshot/route.ts  # §5.4 endpoint terjadwal (Vercel Cron)
 │   │   │   ├── cron/dapodik-sync/route.ts  # §5.5 endpoint terjadwal sinkronisasi Dapodik (Vercel Cron)
 │   │   │   ├── admin/guru-wali-template/route.ts  # §7.2 generate template Excel import Guru Wali
+│   │   │   ├── admin/attendance-template/route.ts  # §5.4b generate template Excel rekap kehadiran
+│   │   │   ├── admin/academic-scores-template/route.ts  # §5.4b generate template Excel import nilai (leger)
 │   │   │   └── files/                  # §7.0c penyajian berkas ber-otorisasi (SK Guru Wali, foto murid) — BUKAN public/
 │   │   └── dashboard/
 │   │       ├── layout.tsx              # shell dashboard (nav ROLE-AWARE, sign-out)
@@ -88,6 +90,8 @@ app/
 │   │   │   ├── ai-config.ts            # §5.2/§7.2 CRUD konfigurasi provider AI (admin-only)
 │   │   │   ├── dapodik.ts              # §5.5/§7.2 CRUD konfigurasi + trigger sync Dapodik (admin-only)
 │   │   │   ├── guru-wali-import.ts     # §7.2 import massal Penugasan Guru Wali dari Excel (admin-only)
+│   │   │   ├── attendance-import.ts    # §5.4b import rekap kehadiran dari Excel (admin-only)
+│   │   │   ├── academic-scores-import.ts # §5.4b import nilai dari leger Excel (admin-only)
 │   │   │   ├── student-profile.ts      # §7.0b Lembar Identitas Murid Wali A-E + foto (guru_wali/admin)
 │   │   │   └── work-plan.ts            # §7.0b Matriks Rencana Kerja (guru_wali-only)
 │   │   ├── jobs/
@@ -103,6 +107,7 @@ app/
 │   │   ├── dapodik.ts                  # §5.5 client Web Service Dapodik (dibangun dari nol, terverifikasi manual)
 │   │   ├── ticket-workflow.ts          # §6 state machine SOP Kolaborasi
 │   │   ├── dashboard-stats.ts          # §7.0 query agregat dashboard statistik (school/class/collaborator stats)
+│   │   ├── excel-helpers.ts            # §5.4b/§7.2 parsing sel Excel bersama (cellToString/cellToDateString/cellToNumber)
 │   │   ├── file-storage.ts             # §7.0c storage berkas lokal (SK Guru Wali, foto murid) — path statis, LIHAT komentar di file
 │   │   ├── text-helpers.ts             # `linesToArray`/`arrayToLines` — konversi textarea <-> field array jsonb, dipakai journal.ts & student-profile.ts
 │   │   └── utils.ts
@@ -310,6 +315,19 @@ Bobot didefinisikan sebagai konstanta (`WEIGHTS` di `ews.ts`) yang eksplisit dir
    - Terjadwal: `GET /api/cron/ews-snapshot` (`src/app/api/cron/ews-snapshot/route.ts`), diamankan header `Authorization: Bearer $CRON_SECRET` (fail-closed kalau env var belum diset), dipanggil `vercel.json` (`crons`, jadwal `0 20 * * *` UTC = 03:00 WIB tiap hari) kalau deploy ke Vercel — atau cron/systemd timer + `curl` untuk deploy non-Vercel.
 
 Snapshot yang terkumpul dipakai dashboard untuk **tren historis**: `RiskTrendSparkline` (`src/components/dashboard/risk-trend-sparkline.tsx`) menggambar sparkline SVG kecil per murid dari 4 snapshot terakhir + skor live sebagai titik terakhir, dengan indikator naik/turun (▲/▼) berwarna semantik (merah=memburuk, hijau=membaik).
+
+### 5.4b Sumber Data Kehadiran & Nilai (Import Excel)
+File: `src/lib/actions/attendance-import.ts`, `src/lib/actions/academic-scores-import.ts`, `src/app/api/admin/attendance-template/route.ts`, `src/app/api/admin/academic-scores-template/route.ts`, `src/lib/excel-helpers.ts`.
+
+Ditemukan 2026-09-23 lewat audit: `attendance_records` & `academic_scores` (2 sinyal EWS TERBESAR — 35% + 30% = 65% dari `riskScore`) **tidak punya satu pun jalur pengisian data di produksi**. Cuma `scripts/seed.ts` (skrip DEMO) yang pernah menulis ke keduanya; sinkronisasi Dapodik **tidak** menarik kehadiran maupun nilai sama sekali. Konsekuensinya: untuk sekolah sungguhan, setiap murid akan menampilkan kehadiran 0% dan tren nilai 0 secara default — bukan karena datanya memang begitu, tapi karena memang belum ada cara data itu masuk.
+
+**Kenapa import Excel, bukan sinkronisasi otomatis**: absensi sekolah ini masih dicatat manual di kertas (bukan sistem presensi digital), dan nilai Dapodik untuk sekolah ini **terbukti kosong** (§9 poin 3 lama — protokol push-then-pull `getMatevNilai`/`getNilai` butuh e-Rapor mendorong data dulu, belum terjadi). Import Excel adalah satu-satunya jalan yang realistis sampai salah satu dari dua hal berubah (sekolah pindah ke presensi digital, atau e-Rapor mulai mendorong nilai ke Dapodik).
+
+- **Format 1 baris = 1 fakta** (bukan grid murid×tanggal seperti kertas fisiknya) — kehadiran: (murid, tanggal, status); nilai: (murid, mapel, term, nilai). Dipilih supaya bisa diisi BERTAHAP (per minggu/bulan/leger yang baru selesai dinilai), bukan harus sekaligus satu semester penuh dalam sekali upload.
+- **Upsert, bukan insert murni** — kehadiran di-upsert per (studentId, date); nilai di-upsert per (studentId, subject, term). Re-upload file yang sama atau file koreksi MENGGANTI baris lama, tidak menduplikasi — pola select-then-insert-or-update yang sama dipakai di seluruh proyek (§11 poin 3).
+- **Template mengikuti pola persis `guru-wali-template`** (§7.2): sheet "Referensi Murid" (NISN terkini) + sheet "Import" dengan dropdown NISN & VLOOKUP nama otomatis untuk verifikasi visual sebelum upload. `cellToString`/`cellToDateString`/`cellToNumber` diekstrak ke `excel-helpers.ts` supaya 3 fitur import (Guru Wali, Kehadiran, Nilai) tidak menyalin ulang parsing sel yang identik.
+- **Admin-only**, sama seperti Sinkronisasi Dapodik & Import Guru Wali — ini operasi bulk yang berdampak ke seluruh sekolah, bukan tugas per-murid seperti Jurnal.
+- **Diverifikasi nyata**: import dijalankan lewat script sekali-pakai terhadap murid sintetis `[TEST]` (dihapus total setelahnya, row count DB diverifikasi kembali ke baseline) — data masuk benar, `computeEwsInputsForStudent()` langsung mencerminkan angka asli (bukan 0 lagi), dan re-import file yang sama menghasilkan "diganti" bukan baris baru.
 
 ### 5.5 Technology — Sinkronisasi Dapodik
 File: `src/lib/dapodik.ts` (client API), `src/lib/jobs/dapodik-sync-job.ts` (logika sync), `src/lib/actions/dapodik.ts` (Server Actions admin), `src/app/api/cron/dapodik-sync/route.ts` (pemicu terjadwal).
@@ -551,6 +569,8 @@ Semua item berikut sudah pernah dilacak sebagai gap dan **sudah dikerjakan** pad
 - ✅ Reset-on-demand untuk password guru yang lupa (`resetUserPasswordAction`, tombol di kartu "Pengguna" Panel Admin) — dipakai juga untuk akun hasil sinkronisasi Dapodik, tanpa perlu menyimpan password plaintext permanen (§7.2, §11 poin 11).
 - ✅ Siswa → Guru Wali lewat import Excel (opsi (a) dari tiga opsi yang didiskusikan — dipilih karena Dapodik terbukti belum mengekspos rombel Wali lewat webservice) — template dengan dropdown NIK/NISN + auto-lookup nama, dicocokkan lewat NIK/NISN, promosi role otomatis, ganti penugasan lama otomatis (§7.2).
 - ✅ Lembar Identitas Murid Wali (Bagian A/B/C/D/E) + Matriks Rencana Kerja + upload SK Guru Wali & foto murid — ditemukan lewat analisis folder `referensi/` bahwa `student_profiles`/`student_academic_history`/`student_achievements`/`work_plan_items` sudah ada di skema sejak awal tapi 0% terhubung ke UI, dan `skFileUrl`/`photoUrl` tidak ada infrastruktur upload sama sekali (§7.0b, §7.0c).
+- ✅ Dashboard statistik per role (Admin/Kepala Sekolah/Guru BK/Wali Kelas/Guru Mapel) — sebelumnya kelima role ini langsung di-redirect menjauh dari `/dashboard` tanpa pernah melihat ringkasan statistik (§7.0).
+- ✅ Sumber data kehadiran & nilai untuk EWS — ditemukan lewat audit bahwa `attendance_records`/`academic_scores` (65% bobot EWS) tidak punya satu pun jalur pengisian data produksi; ditutup lewat import Excel dari rekap absensi kertas & leger guru mapel (§5.4b).
 
 **Yang masih terbuka** (audit jujur, supaya developer lanjutan tahu persis di mana berhenti):
 

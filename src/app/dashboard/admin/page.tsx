@@ -12,6 +12,8 @@ import { CreateUserForm } from "@/components/dashboard/admin/create-user-form";
 import { UserList } from "@/components/dashboard/admin/user-list";
 import { CreateAssignmentForm } from "@/components/dashboard/admin/create-assignment-form";
 import { GuruWaliImportForm } from "@/components/dashboard/admin/guru-wali-import-form";
+import { AttendanceImportForm } from "@/components/dashboard/admin/attendance-import-form";
+import { AcademicScoresImportForm } from "@/components/dashboard/admin/academic-scores-import-form";
 import { SkUploadForm } from "@/components/dashboard/admin/sk-upload-form";
 import { AiProviderConfigForm } from "@/components/dashboard/admin/ai-provider-config-form";
 import { DapodikConfigForm } from "@/components/dashboard/admin/dapodik-config-form";
@@ -217,6 +219,21 @@ export default async function AdminPage() {
               </div>
             ))}
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Data Kehadiran & Nilai (untuk EWS)</CardTitle>
+          <CardDescription>
+            Early Warning System butuh data ini (kehadiran 35% + tren nilai 30% dari skor risiko) — belum ada
+            sumber otomatis (Dapodik tidak menyediakan keduanya), jadi diisi lewat rekap Excel dari absensi kertas
+            & leger guru mapel.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <AttendanceImportForm />
+          <AcademicScoresImportForm />
         </CardContent>
       </Card>
 
