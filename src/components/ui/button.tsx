@@ -29,3 +29,6 @@ export interface ButtonProps
 export function Button({ className, variant, size, ...props }: ButtonProps) {
   return <button className={cn(buttonVariants({ variant, size }), className)} {...props} />;
 }
+
+/** Ekspor variants mentah untuk kasus tombol yang HARUS berupa `<a>`/`<Link>` (bukan `<button>`), mis. tombol navigasi — proyek ini sengaja tidak pakai pola `asChild`/Radix Slot (lihat ARCHITECTURE.md §7.5), jadi styling-nya ditempel langsung ke elemen link. */
+export { buttonVariants };

@@ -27,8 +27,10 @@ const GURU_WALI_NAV = [
   { href: "/dashboard/ai-assistant", label: "AI Assistant" },
 ];
 
-const COLLABORATOR_NAV = [{ href: "/dashboard/collaboration", label: "Tiket Kolaborasi" }];
+const DASHBOARD_NAV_ITEM = { href: "/dashboard", label: "Dashboard" };
+const COLLABORATOR_NAV = [DASHBOARD_NAV_ITEM, { href: "/dashboard/collaboration", label: "Tiket Kolaborasi" }];
 const ADMIN_NAV = [
+  DASHBOARD_NAV_ITEM,
   { href: "/dashboard/admin", label: "Panel Admin" },
   { href: "/dashboard/students", label: "Murid Saya" },
 ];

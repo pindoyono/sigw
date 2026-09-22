@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { students, guruWaliAssignments, users, classes, smartGoals, tickets, ewsSnapshots } from "@/db/schema";
+import { students, guruWaliAssignments, users, classes, smartGoals, tickets, ewsSnapshots, schools } from "@/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { calculateEws } from "@/lib/ews";
 import { computeEwsInputsForStudent } from "@/lib/ews-inputs";
@@ -10,19 +10,15 @@ import {
   type StudentEwsRow,
   type SmartGoalProgress,
 } from "@/components/dashboard/guru-wali-dashboard";
+import { AdminStatsDashboard } from "@/components/dashboard/stats/admin-stats-dashboard";
+import { PrincipalStatsDashboard } from "@/components/dashboard/stats/principal-stats-dashboard";
+import { CollaboratorStatsDashboard } from "@/components/dashboard/stats/collaborator-stats-dashboard";
+import { WaliKelasStatsDashboard } from "@/components/dashboard/stats/wali-kelas-stats-dashboard";
+import { getSchoolStats, getClassStats, getCollaboratorTicketStats, getPendingPrincipalDecisions } from "@/lib/dashboard-stats";
 
-const COLLABORATOR_ROLES = ["kepala_sekolah", "guru_bk", "wali_kelas", "guru_mapel"] as const;
-
-// Data EWS berubah tiap saat (kehadiran, nilai, tiket), jadi halaman ini harus
-// selalu dirender ulang di server, bukan di-cache sebagai halaman statis.
+// Data EWS/tiket berubah tiap saat, jadi halaman ini harus selalu dirender
+// ulang di server untuk semua role, bukan di-cache sebagai halaman statis.
 export const dynamic = "force-dynamic";
-
-async function getCurrentTeacher() {
-  const session = await auth();
-  if (!session?.user || session.user.role !== "guru_wali") return null;
-  const [teacher] = await db.select().from(users).where(eq(users.id, session.user.id)).limit(1);
-  return teacher;
-}
 
 async function buildStudentEwsRows(teacherId: string): Promise<StudentEwsRow[]> {
   const assignments = await db
@@ -97,19 +93,54 @@ async function buildSmartGoalProgress(teacherId: string): Promise<SmartGoalProgr
 
 export default async function DashboardPage() {
   const session = await auth();
-  if (session?.user && (COLLABORATOR_ROLES as readonly string[]).includes(session.user.role)) {
-    redirect("/dashboard/collaboration");
-  }
-  if (session?.user?.role === "admin") {
-    redirect("/dashboard/admin");
+  if (!session?.user) redirect("/login");
+  const { role, id: userId, schoolId, name } = session.user;
+
+  if (role === "admin") {
+    const [school] = await db.select({ name: schools.name }).from(schools).where(eq(schools.id, schoolId));
+    const stats = await getSchoolStats(schoolId);
+    return <AdminStatsDashboard schoolName={school?.name ?? "Sekolah"} stats={stats} />;
   }
 
-  const teacher = await getCurrentTeacher();
+  if (role === "kepala_sekolah") {
+    const [school] = await db.select({ name: schools.name }).from(schools).where(eq(schools.id, schoolId));
+    const [schoolStats, myTicketStats, pendingDecisions] = await Promise.all([
+      getSchoolStats(schoolId),
+      getCollaboratorTicketStats(userId),
+      getPendingPrincipalDecisions(userId),
+    ]);
+    return (
+      <PrincipalStatsDashboard
+        schoolName={school?.name ?? "Sekolah"}
+        schoolStats={schoolStats}
+        myTicketStats={myTicketStats}
+        pendingDecisions={pendingDecisions}
+      />
+    );
+  }
 
+  if (role === "guru_bk" || role === "guru_mapel") {
+    const stats = await getCollaboratorTicketStats(userId);
+    return (
+      <CollaboratorStatsDashboard
+        teacherName={name ?? ""}
+        jalurLabel={role === "guru_bk" ? "Jalur B: Sosial/Karakter" : "Jalur A: Akademik"}
+        stats={stats}
+      />
+    );
+  }
+
+  if (role === "wali_kelas") {
+    const classStats = await getClassStats(userId);
+    return <WaliKelasStatsDashboard teacherName={name ?? ""} classes={classStats} />;
+  }
+
+  // guru_wali (default) — dashboard EWS per murid binaan.
+  const [teacher] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
   if (!teacher) {
     return (
       <div className="p-10 text-center text-sm text-slate-500">
-        Dashboard ini hanya tersedia untuk akun dengan peran Guru Wali.
+        Akun tidak ditemukan.
       </div>
     );
   }

@@ -220,7 +220,9 @@ export const ROLE_GUIDES: RoleGuide[] = [
           p(
             "Anda hanya dilibatkan sistem pada satu titik krusial: ketika seorang Guru Wali menilai kasus murid sebagai 'Berat' dan mengeskalasikannya. Anda tidak perlu memantau seluruh aktivitas Guru Wali sehari-hari — sistem hanya akan menampilkan kasus yang benar-benar butuh keputusan Anda.",
           ),
-          note("Setelah login, Anda otomatis diarahkan ke halaman 'Tiket Kolaborasi' yang berisi daftar kasus tersebut."),
+          note(
+            "Setelah login, Anda mendarat di halaman 'Dashboard' — ringkasan jumlah tiket yang menunggu keputusan Anda, riwayat eskalasi, dan kondisi risiko murid se-sekolah. Menu 'Tiket Kolaborasi' berisi daftar kasusnya satu per satu untuk ditindaklanjuti.",
+          ),
         ],
       },
       {
@@ -252,6 +254,7 @@ export const ROLE_GUIDES: RoleGuide[] = [
           p(
             "Ketika Guru Wali mengklasifikasikan sebuah tiket sebagai 'Jalur B: Isu Sosial/Karakter', sistem otomatis menandai Anda sebagai kolaborator. Anda akan melihat tiket tersebut muncul di halaman Anda tanpa perlu diberi tahu manual.",
           ),
+          note("Menu 'Dashboard' menampilkan ringkasan jumlah kasus yang perlu tindak lanjut, sudah selesai, dan distribusi tingkat keparahannya — tanpa perlu membuka daftar tiket satu per satu untuk tahu beban kerja Anda saat ini."),
         ],
       },
       {
@@ -280,6 +283,7 @@ export const ROLE_GUIDES: RoleGuide[] = [
           p(
             "Wali Kelas berbeda dari Guru Wali. Wali Kelas bertanggung jawab pada satu KELAS secara administratif, sementara Guru Wali mendampingi murid secara individual lintas kelas dan lintas tahun. Di SIGW, Wali Kelas dilibatkan otomatis sebagai kolaborator setiap kali ada tiket murid di kelasnya yang baru dilaporkan, atau yang diklasifikasikan Jalur A (akademik).",
           ),
+          note("Menu 'Dashboard' menampilkan ringkasan kelas yang Anda pegang: jumlah murid, distribusi risiko EWS per murid di kelas itu, dan jumlah tiket kolaborasi yang sedang aktif."),
         ],
       },
       {
@@ -307,6 +311,7 @@ export const ROLE_GUIDES: RoleGuide[] = [
           p(
             "Ketika Guru Wali mengklasifikasikan sebuah tiket sebagai 'Jalur A: Isu Akademik', sistem otomatis menandai Anda sebagai kolaborator bersama Wali Kelas murid tersebut.",
           ),
+          note("Menu 'Dashboard' menampilkan ringkasan jumlah kasus yang perlu tindak lanjut, sudah selesai, dan distribusi tingkat keparahannya — tanpa perlu membuka daftar tiket satu per satu untuk tahu beban kerja Anda saat ini."),
         ],
       },
       {
@@ -333,6 +338,9 @@ export const ROLE_GUIDES: RoleGuide[] = [
         blocks: [
           p(
             "Anda mengelola seluruh data dasar yang dipakai peran lain — tanpa data ini, Guru Wali dan role lain tidak bisa mulai bekerja. Semua menu Admin ada dalam satu halaman 'Panel Admin', dibagi jadi beberapa kartu.",
+          ),
+          note(
+            "Menu 'Dashboard' (terpisah dari 'Panel Admin') menampilkan ringkasan statistik sekolah: total murid & kelas, cakupan penugasan Guru Wali, distribusi risiko EWS seluruh murid, ringkasan tiket kolaborasi, serta status sinkronisasi Dapodik dan AI Assistant — gunakan ini untuk memantau kondisi sekolah secara sekilas, sebelum masuk ke 'Panel Admin' untuk mengelola data.",
           ),
         ],
       },

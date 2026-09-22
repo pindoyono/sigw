@@ -59,7 +59,7 @@ app/
 │   │   │   └── files/                  # §7.0c penyajian berkas ber-otorisasi (SK Guru Wali, foto murid) — BUKAN public/
 │   │   └── dashboard/
 │   │       ├── layout.tsx              # shell dashboard (nav ROLE-AWARE, sign-out)
-│   │       ├── page.tsx                # Dashboard Guru Wali (EWS + tren + SMART goals); redirect otomatis utk role lain
+│   │       ├── page.tsx                # §7.0 Dashboard SEMUA role (1 file, cabang per session.user.role) — EWS Guru Wali, statistik sekolah Admin/Kepsek/BK/Wali Kelas/Mapel
 │   │       ├── students/page.tsx       # §7.0b daftar murid binaan -> [id]/page.tsx Lembar Identitas Murid Wali lengkap
 │   │       ├── work-plan/page.tsx      # §7.0b Matriks Rencana Kerja
 │   │       ├── change-password/page.tsx # §5.5/§8 ganti password wajib (akun hasil auto-provisioning Dapodik)
@@ -77,7 +77,10 @@ app/
 │   │   ├── dashboard/                  # form-form + guru-wali-dashboard.tsx, risk-trend-sparkline.tsx
 │   │   │   ├── admin/                  # form-form khusus panel Admin
 │   │   │   ├── flow/                   # §7.4 konten & UI Alur Kerja (flow-content.ts, flow-chart.tsx)
-│   │   │   └── help/                   # §7.3 konten & UI Panduan Pengguna (help-content.ts, help-center.tsx)
+│   │   │   ├── help/                   # §7.3 konten & UI Panduan Pengguna (help-content.ts, help-center.tsx)
+│   │   │   ├── stats/                  # §7.0 dashboard statistik Admin/Kepsek/BK/Wali Kelas/Mapel
+│   │   │   ├── stat-card.tsx           # §7.0 kartu ringkasan angka, dipakai semua dashboard role
+│   │   │   └── distribution-bar.tsx    # §7.0 bar distribusi (risiko EWS / status tiket), generik
 │   │   └── ui/                         # §7.5 primitives (badge, button, card, progress, input, textarea, select, checkbox, label, field)
 │   ├── lib/
 │   │   ├── actions/                    # Server Actions ("use server") — satu file per domain
@@ -99,6 +102,7 @@ app/
 │   │   ├── ai-providers.ts             # §5.2 adapter multi-provider CHAT (openai/openrouter/gemini/custom)
 │   │   ├── dapodik.ts                  # §5.5 client Web Service Dapodik (dibangun dari nol, terverifikasi manual)
 │   │   ├── ticket-workflow.ts          # §6 state machine SOP Kolaborasi
+│   │   ├── dashboard-stats.ts          # §7.0 query agregat dashboard statistik (school/class/collaborator stats)
 │   │   ├── file-storage.ts             # §7.0c storage berkas lokal (SK Guru Wali, foto murid) — path statis, LIHAT komentar di file
 │   │   ├── text-helpers.ts             # `linesToArray`/`arrayToLines` — konversi textarea <-> field array jsonb, dipakai journal.ts & student-profile.ts
 │   │   └── utils.ts
@@ -390,14 +394,22 @@ Prinsip desain (jangan dilanggar saat menambah fitur):
 
 ## 7. Dashboard & Halaman per Peran (UI)
 
-### 7.0 Dashboard Guru Wali
-Komponen: `src/components/dashboard/guru-wali-dashboard.tsx`, dirender oleh `src/app/dashboard/page.tsx` (Server Component yang query DB lalu passing props — tidak ada client-side fetch terpisah).
+### 7.0 Dashboard — `/dashboard` (root, SEMUA role)
+`src/app/dashboard/page.tsx` adalah satu Server Component yang cabang isinya berdasarkan `session.user.role` — bukan 6 halaman terpisah, supaya URL "Dashboard" konsisten di seluruh role (link nav yang sama, `/dashboard`, cukup kontennya beda).
 
-Struktur:
+**Guru Wali** (`src/components/dashboard/guru-wali-dashboard.tsx`) — dashboard paling detail karena Guru Wali mengelola murid secara individual:
 - **4 kartu ringkasan**: total murid binaan, murid perlu perhatian (`riskLevel !== aman`), rata-rata kehadiran, tiket kolaborasi aktif.
 - **Panel EWS** (kiri, `lg:col-span-3`): daftar murid diurutkan skor risiko tertinggi → terendah, badge warna (`success`/`warning`/`danger`), **sparkline tren** (§5.4) di sebelah badge, chip `contributingFactors`, status tiket terbuka bila ada.
 - **Panel Progres SMART Goals** (kanan, `lg:col-span-2`): horizontal bar chart (Recharts) + daftar progress bar per target.
 - **Tabel Daftar Murid Binaan**: kehadiran, tren nilai, status risiko — untuk scan cepat seluruh murid binaan sepanjang tahun ajaran.
+
+**Admin, Kepala Sekolah, Guru BK, Wali Kelas, Guru Mapel** (`src/components/dashboard/stats/*`, data dari `src/lib/dashboard-stats.ts`) — ditambahkan 2026-09-23, sebelumnya kelima role ini langsung di-redirect menjauh dari `/dashboard` (ke Panel Admin / Tiket Kolaborasi) tanpa pernah melihat ringkasan statistik apa pun:
+- **Admin** (`AdminStatsDashboard`) — statistik SATU SEKOLAH PENUH: murid aktif, kelas, cakupan penugasan Guru Wali (%), distribusi risiko EWS, ringkasan tiket (aktif/selesai/berat), jumlah guru per peran, status Dapodik & AI Assistant.
+- **Kepala Sekolah** (`PrincipalStatsDashboard`) — gabungan: "Menunggu Keputusan Anda" (tiket berstatus `eskalasi_kepala_sekolah` yang pernah di-tag ke beliau — BEDA dari sekadar "aktif", lihat `getPendingPrincipalDecisions`) + ringkasan risiko/tiket satu sekolah penuh (kepsek punya hak pandang sekolah, bukan cuma tiketnya sendiri).
+- **Guru BK / Guru Mapel** (`CollaboratorStatsDashboard`, 1 komponen dipakai 2 role — bedanya cuma label "Jalur B"/"Jalur A") — statistik tiket yang di-tag sistem ke akun mereka: perlu tindak lanjut, selesai, distribusi keparahan.
+- **Wali Kelas** (`WaliKelasStatsDashboard`) — per kelas yang mereka pegang (`classes.waliKelasId`): jumlah murid, distribusi risiko, tiket aktif di kelas itu. Wali Kelas bisa pegang >1 kelas — komponen me-render 1 card per kelas.
+
+**Keputusan desain penting** (`src/lib/dashboard-stats.ts`): distribusi risiko EWS untuk Admin/Kepala Sekolah/Wali Kelas SENGAJA pakai `ews_snapshots` (hasil job batch `ews:snapshot`/cron — §5.4), BUKAN kalkulasi live seperti dashboard Guru Wali. Guru Wali cuma punya ~15-25 murid binaan sehingga loop kalkulasi live murah; Admin/Kepsek melihat SELURUH murid sekolah (bisa ratusan) — loop yang sama akan lambat. Konsekuensinya data "as of" snapshot terakhir (biasanya harian), bukan real-time per detik — ini trade-off yang disengaja, bukan keterbatasan yang belum sempat diperbaiki.
 
 Halaman dashboard Guru Wali lain: `journal/` (4 jenis form: konsultasi, kolaborasi, bimbingan kelompok, home visit), `reflections/`, `smart-goals/`, `tickets/`, `psychometric/` (§5.1), `ai-assistant/`, `students/` & `work-plan/` (§7.0b di bawah) — masing-masing punya Server Action pasangan di `src/lib/actions/`.
 
@@ -448,7 +460,7 @@ CRUD data master untuk role `admin`, di-scope ke `schoolId` admin yang login (sa
 
 **Bukan cakupan panel ini**: membuat *sekolah baru* (multi-tenant lintas sekolah) — lihat §9.
 
-Nav header (`src/app/dashboard/layout.tsx`) sepenuhnya role-aware (`navForRole()`), dan `/dashboard` (root) redirect otomatis: `guru_wali`→tetap di dashboard, `admin`→`/dashboard/admin`, keempat role kolaborator→`/dashboard/collaboration`.
+Nav header (`src/app/dashboard/layout.tsx`) sepenuhnya role-aware (`navForRole()`). `/dashboard` (root) TIDAK lagi redirect menjauh untuk role selain Guru Wali (lihat §7.0) — semua role sekarang punya link "Dashboard" sendiri di nav, isinya statistik masing-masing; Admin & role kolaborator tetap punya link terpisah ke `/dashboard/admin`/`/dashboard/collaboration` untuk kerja operasionalnya.
 
 ### 7.3 Panduan Pengguna (`/dashboard/help`)
 File: `src/app/dashboard/help/page.tsx`, `src/components/dashboard/help/help-center.tsx`, `src/components/dashboard/help/help-content.ts`.

@@ -17,6 +17,7 @@ import { Progress } from "@/components/ui/progress";
 import { RISK_LEVEL_LABELS, type RiskLevel } from "@/lib/ews";
 import { TICKET_STATUS_LABELS, type TicketStatus } from "@/lib/ticket-workflow";
 import { RiskTrendSparkline } from "@/components/dashboard/risk-trend-sparkline";
+import { StatCard } from "@/components/dashboard/stat-card";
 
 export interface StudentEwsRow {
   studentId: string;
@@ -69,23 +70,23 @@ export function GuruWaliDashboard({ teacherName, students, smartGoals }: GuruWal
 
       {/* Ringkasan Kartu (Summary) */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <SummaryCard
+        <StatCard
           icon={<Users className="h-4 w-4 text-blue-600" />}
           label="Total Murid Binaan"
           value={students.length.toString()}
         />
-        <SummaryCard
+        <StatCard
           icon={<AlertTriangle className="h-4 w-4 text-amber-600" />}
           label="Murid Perlu Perhatian"
           value={atRiskCount.toString()}
           valueClassName={atRiskCount > 0 ? "text-amber-600" : undefined}
         />
-        <SummaryCard
+        <StatCard
           icon={<TrendingDown className="h-4 w-4 text-emerald-600" />}
           label="Rata-rata Kehadiran"
           value={`${avgAttendance}%`}
         />
-        <SummaryCard
+        <StatCard
           icon={<TicketIcon className="h-4 w-4 text-purple-600" />}
           label="Tiket Kolaborasi Aktif"
           value={activeTickets.toString()}
@@ -223,29 +224,5 @@ export function GuruWaliDashboard({ teacherName, students, smartGoals }: GuruWal
         </CardContent>
       </Card>
     </div>
-  );
-}
-
-function SummaryCard({
-  icon,
-  label,
-  value,
-  valueClassName,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  valueClassName?: string;
-}) {
-  return (
-    <Card>
-      <CardContent className="flex items-center gap-3 p-4">
-        <div className="rounded-lg bg-slate-50 p-2">{icon}</div>
-        <div>
-          <p className="text-xs text-slate-500">{label}</p>
-          <p className={`text-lg font-semibold text-slate-900 ${valueClassName ?? ""}`}>{value}</p>
-        </div>
-      </CardContent>
-    </Card>
   );
 }
