@@ -39,17 +39,33 @@ export default async function WorkPlanPage() {
         <CardHeader>
           <CardTitle>Unduh Laporan</CardTitle>
           <CardDescription>
-            Dibuat otomatis dari data yang sudah Anda isi — tidak perlu menulis ulang manual. Cetak, tanda tangani, lalu
-            simpan sebagai bukti fisik sesuai Matriks Rencana Kerja di atas.
+            Dibuat otomatis dari data yang sudah Anda isi — tidak perlu menulis ulang manual. Pilih formatnya, lalu
+            cetak/tanda tangani sebagai bukti fisik sesuai Matriks Rencana Kerja di atas.
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-wrap gap-3">
-          <a href="/api/reports/laporan-perencanaan" className={cn(buttonVariants({ variant: "outline" }))}>
-            Unduh Laporan Perencanaan
-          </a>
-          <a href="/api/reports/laporan-pelaksanaan-tahunan" className={cn(buttonVariants({ variant: "outline" }))}>
-            Unduh Laporan Pelaksanaan Tahunan
-          </a>
+        <CardContent className="flex flex-col gap-5">
+          <div>
+            <p className="mb-2 text-sm font-medium text-slate-700">Laporan Perencanaan</p>
+            <div className="flex flex-wrap gap-2">
+              <a href="/api/reports/laporan-perencanaan?format=pdf" className={cn(buttonVariants({ variant: "default", size: "sm" }))}>
+                Unduh PDF
+              </a>
+              <a href="/api/reports/laporan-perencanaan?format=xlsx" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+                Unduh Excel
+              </a>
+            </div>
+          </div>
+          <div>
+            <p className="mb-2 text-sm font-medium text-slate-700">Laporan Pelaksanaan Tahunan</p>
+            <div className="flex flex-wrap gap-2">
+              <a href="/api/reports/laporan-pelaksanaan-tahunan?format=pdf" className={cn(buttonVariants({ variant: "default", size: "sm" }))}>
+                Unduh PDF
+              </a>
+              <a href="/api/reports/laporan-pelaksanaan-tahunan?format=docx" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+                Unduh Word
+              </a>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>

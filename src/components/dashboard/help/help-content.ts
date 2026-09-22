@@ -199,11 +199,14 @@ export const ROLE_GUIDES: RoleGuide[] = [
         title: "Unduh Laporan (Perencanaan & Pelaksanaan Tahunan)",
         blocks: [
           p(
-            "Di bawah Matriks Rencana Kerja ada 2 tombol unduh — keduanya PDF yang disusun OTOMATIS dari data yang sudah Anda isi sepanjang tahun. Anda tidak perlu menulis laporan ini dari nol.",
+            "Di bawah Matriks Rencana Kerja ada 2 laporan, masing-masing bisa diunduh dalam 2 format — semuanya disusun OTOMATIS dari data yang sudah Anda isi sepanjang tahun. Anda tidak perlu menulis laporan ini dari nol.",
           ),
           list(
-            "Laporan Perencanaan — daftar murid binaan + Matriks Rencana Kerja yang sudah terisi. Cocok diunduh di awal tahun ajaran (Juli) sebagai bukti fisik 'Menyusun Laporan Perencanaan'.",
-            "Laporan Pelaksanaan Tahunan — kompilasi Lembar Identitas Murid Wali, semua Laporan Konsultasi/Kolaborasi/Bimbingan Kelompok/Kunjungan Rumah yang pernah Anda catat di menu Jurnal, plus ringkasan Target SMART. Cocok diunduh di akhir tahun ajaran (Juni) sebagai bukti fisik 'Penyusunan Laporan Pelaksanaan Tahunan'.",
+            "Laporan Perencanaan (PDF atau Excel) — daftar murid binaan + Matriks Rencana Kerja yang sudah terisi. Cocok diunduh di awal tahun ajaran (Juli) sebagai bukti fisik 'Menyusun Laporan Perencanaan'.",
+            "Laporan Pelaksanaan Tahunan (PDF atau Word) — kompilasi Lembar Identitas Murid Wali, semua Laporan Konsultasi/Kolaborasi/Bimbingan Kelompok/Kunjungan Rumah yang pernah Anda catat di menu Jurnal, plus ringkasan Target SMART. Cocok diunduh di akhir tahun ajaran (Juni) sebagai bukti fisik 'Penyusunan Laporan Pelaksanaan Tahunan'.",
+          ),
+          note(
+            "Pilih PDF untuk langsung dicetak (tampilannya pasti sama di perangkat mana pun), atau Excel/Word kalau masih ingin mengedit isinya dulu (mis. Kepsek ingin menambahkan catatan) sebelum dicetak/ditandatangani. Isinya SAMA PERSIS di kedua format — cuma bentuk filenya beda.",
           ),
           note(
             "Karena isinya diambil langsung dari data Jurnal, Murid Saya, dan Target SMART — makin rajin Anda mencatat sepanjang tahun, makin lengkap kedua laporan ini nanti. Bagian yang belum ada datanya akan tertulis 'Belum ada...', bukan dikosongkan diam-diam.",
