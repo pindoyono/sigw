@@ -94,7 +94,8 @@ export const smartGoalStatusEnum = pgEnum("smart_goal_status", ["berjalan", "ter
 export const schools = pgTable("schools", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: varchar("name", { length: 255 }).notNull(),
-  npsn: varchar("npsn", { length: 20 }),
+  /** Unique di level DB (bukan cuma dicek di `registerSchoolAction`) — mencegah 2 sekolah terdaftar dengan NPSN sama persis walau 2 pendaftaran terjadi bersamaan (race condition). NULL tetap boleh berkali-kali (data lama sebelum NPSN diwajibkan saat registrasi). */
+  npsn: varchar("npsn", { length: 20 }).unique(),
   address: text("address"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

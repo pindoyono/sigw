@@ -1,0 +1,1 @@
+ALTER TABLE "schools" ADD CONSTRAINT "schools_npsn_unique" UNIQUE("npsn");

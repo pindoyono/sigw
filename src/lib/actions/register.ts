@@ -4,6 +4,7 @@ import { AuthError } from "next-auth";
 import { signIn } from "@/auth";
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
+import postgres from "postgres";
 import { db } from "@/db";
 import { schools, users } from "@/db/schema";
 
@@ -22,10 +23,13 @@ type RegisterState = { error?: string } | undefined;
  * di seluruh `src/lib/actions/` — registrasi ini TIDAK butuh perubahan RBAC
  * apa pun, cuma menambah baris data.
  *
- * Uniqueness NPSN & email dicek di level aplikasi (SELECT sebelum INSERT,
- * pola sama `createUserAction` di `admin.ts`), bukan constraint DB baru —
- * race condition dua pendaftaran dengan NPSN sama persis di detik yang sama
- * adalah risiko yang diterima, bukan ditutup habis-habisan.
+ * Uniqueness NPSN & email dicek DUA LAPIS: SELECT sebelum INSERT dulu (pesan
+ * error cepat & ramah untuk kasus normal — pola sama `createUserAction` di
+ * `admin.ts`), DAN constraint UNIQUE asli di DB (`schools.npsn` — migrasi
+ * `0006_low_valkyrie.sql`; `users.email` — sudah ada sejak awal proyek)
+ * sebagai jaring pengaman kalau 2 pendaftaran NPSN/email sama persis terjadi
+ * bersamaan (race condition lolos dari 2 SELECT di atas) — ditangkap lewat
+ * kode error Postgres `23505` di bawah, BUKAN dibiarkan jadi error 500 mentah.
  */
 export async function registerSchoolAction(_prevState: RegisterState, formData: FormData): Promise<RegisterState> {
   const schoolName = formData.get("schoolName");
@@ -49,23 +53,51 @@ export async function registerSchoolAction(_prevState: RegisterState, formData: 
   const [existingUser] = await db.select({ id: users.id }).from(users).where(eq(users.email, email.trim()));
   if (existingUser) return { error: "Email tersebut sudah terdaftar." };
 
-  const [school] = await db
-    .insert(schools)
-    .values({
-      name: schoolName.trim(),
-      npsn: npsn.trim(),
-      address: typeof address === "string" && address.trim() ? address.trim() : null,
-    })
-    .returning();
-
   const passwordHash = await bcrypt.hash(password, 10);
-  await db.insert(users).values({
-    schoolId: school.id,
-    name: adminName.trim(),
-    email: email.trim(),
-    passwordHash,
-    role: "admin",
-  });
+
+  try {
+    // Transaksi: sekolah + admin pertamanya dibuat sebagai SATU unit — kalau
+    // insert user gagal (mis. email ternyata baru saja dipakai pendaftaran
+    // lain di detik yang sama), insert sekolahnya ikut dibatalkan juga,
+    // bukan meninggalkan baris `schools` tanpa admin (orphan).
+    await db.transaction(async (tx) => {
+      const [school] = await tx
+        .insert(schools)
+        .values({
+          name: schoolName.trim(),
+          npsn: npsn.trim(),
+          address: typeof address === "string" && address.trim() ? address.trim() : null,
+        })
+        .returning();
+
+      await tx.insert(users).values({
+        schoolId: school.id,
+        name: adminName.trim(),
+        email: email.trim(),
+        passwordHash,
+        role: "admin",
+      });
+    });
+  } catch (error) {
+    // drizzle-orm membungkus error driver asli jadi `DrizzleQueryError`, PostgresError
+    // aslinya ada di `.cause` (bukan di error itu sendiri) — lihat node_modules/drizzle-orm/errors.js.
+    // Dicek keduanya (cause dulu, baru error langsung) supaya tidak rapuh kalau drizzle
+    // mengubah cara bungkusnya di versi depan.
+    const pgError = [error, (error as { cause?: unknown })?.cause].find((e) => e instanceof postgres.PostgresError) as
+      | InstanceType<typeof postgres.PostgresError>
+      | undefined;
+
+    // Kode error Postgres 23505 = unique_violation — jaring pengaman untuk race
+    // condition yang lolos dari 2 SELECT di atas (2 pendaftaran NPSN/email sama
+    // persis di detik yang sama). `constraint_name` menentukan pesan yang tepat,
+    // BUKAN dibiarkan jadi error 500 mentah ke pengguna.
+    if (pgError?.code === "23505") {
+      if (pgError.constraint_name === "schools_npsn_unique") return { error: "NPSN tersebut sudah terdaftar di SIGW." };
+      if (pgError.constraint_name === "users_email_unique") return { error: "Email tersebut sudah terdaftar." };
+      return { error: "Data yang Anda isi bertabrakan dengan pendaftaran lain — coba lagi." };
+    }
+    throw error;
+  }
 
   try {
     await signIn("credentials", { email: email.trim(), password, redirectTo: "/dashboard" });
