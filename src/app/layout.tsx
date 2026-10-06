@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "SIGW — Sistem Informasi Guru Wali",
-  description: "Platform pendampingan murid untuk Guru Wali, Kepala Sekolah, Guru BK, Wali Kelas, dan Guru Mapel di SMK Negeri 2 Malinau.",
+  description: "Platform pendampingan murid untuk Guru Wali, Kepala Sekolah, Guru BK, Wali Kelas, dan Guru Mapel — mendukung banyak sekolah.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

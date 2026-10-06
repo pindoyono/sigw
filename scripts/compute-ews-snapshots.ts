@@ -16,7 +16,7 @@ async function main() {
   console.log("Menghitung EWS untuk seluruh murid aktif...");
   const result = await runEwsSnapshotJob();
   console.log(
-    `Selesai. Total: ${result.total} · Aman: ${result.aman} · Waspada: ${result.waspada} · Berisiko tinggi: ${result.berisikoTinggi}.`,
+    `Selesai. Total: ${result.total} · Aman: ${result.aman} · Waspada: ${result.waspada} · Berisiko tinggi: ${result.berisikoTinggi} · Gagal: ${result.gagal}.`,
   );
   process.exit(0);
 }

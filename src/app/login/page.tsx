@@ -34,6 +34,13 @@ export default function LoginPage() {
           </Button>
         </form>
 
+        <p className="mt-4 text-center text-sm text-slate-500">
+          Sekolah Anda belum terdaftar?{" "}
+          <a href="/register" className="font-medium text-blue-600 hover:underline">
+            Daftar sekolah baru
+          </a>
+        </p>
+
         {process.env.NODE_ENV !== "production" && (
           <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-700">
             Mode pengembangan — demo: guruwali@sigw.test / password123

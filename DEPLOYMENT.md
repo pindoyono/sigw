@@ -144,31 +144,19 @@ bun run build                 # build production (.next/)
 
 > **Backup**: folder `uploads/` berisi dokumen SK & foto murid asli — **tidak ada di git, tidak ikut ter-backup otomatis lewat `git pull`**. Masukkan ke rutinitas backup terpisah (mis. `rsync`/`tar` berkala ke storage lain), sama pentingnya dengan backup database.
 
-> **Jangan jalankan `bun run db:seed`** di server produksi — itu mengisi data DEMO (sekolah palsu "SMP Negeri 1 Contoh", 5 akun dengan password `password123`). Untuk sekolah sungguhan, ikuti §7 di bawah untuk membuat sekolah & admin pertama yang benar.
+> **Jangan jalankan `bun run db:seed`** di server produksi — itu mengisi data DEMO (sekolah palsu "SMP Negeri 1 Contoh", 5 akun dengan password `password123`). SIGW sekarang **multi-tenant** (§3.5 ARCHITECTURE.md) — untuk sekolah sungguhan, cukup buka halaman pendaftaran di langkah §6a, `db:seed` sudah tidak diperlukan sama sekali untuk deploy produksi.
 
-### 6a. Inisialisasi Sekolah & Admin Pertama (WAJIB, sekali saja)
+### 6a. Daftarkan Sekolah & Admin Pertama (WAJIB, sekali per sekolah)
 
-SIGW saat ini **belum punya form "buat sekolah baru"** di UI (satu deployment = satu sekolah, lihat §9 ARCHITECTURE.md) — jadi baris `schools` pertama & akun admin pertama harus dibuat lewat `db:seed`, lalu dibersihkan/disesuaikan manual:
+SIGW mendukung banyak sekolah dalam satu deployment yang sama — setiap sekolah daftar sendiri lewat halaman publik `/register` (lihat ARCHITECTURE.md §3.5), tidak perlu lagi lewat `db:seed`/SQL manual seperti versi sebelumnya:
 
-```bash
-bun run db:seed   # SEKALI SAJA — bikin 1 sekolah + 5 akun demo (termasuk admin@sigw.test / password123)
-```
+1. Buka `https://<domain-anda>/register`.
+2. Isi **Data Sekolah**: Nama Sekolah, NPSN (wajib, dicek harus belum terdaftar — siapkan NPSN asli sekolah Anda karena dipakai lagi nanti saat setup Sinkronisasi Dapodik), Alamat (opsional).
+3. Isi **Akun Admin Pertama**: Nama, Email, Kata Sandi (pilih sendiri, minimal 8 karakter) + Konfirmasi.
+4. Klik **Daftarkan Sekolah** — Anda otomatis login dan langsung masuk ke Panel Admin, TIDAK perlu login manual terpisah.
+5. Lanjut lengkapi data di Panel Admin: Tahun Ajaran → Kelas → Murid → Pengguna (guru-guru lain), atau kalau sekolah Anda memakai Dapodik, langsung ke kartu **Sinkronisasi Dapodik** untuk menarik data murid/kelas/guru sungguhan (lihat §5.5 ARCHITECTURE.md) — ini menggantikan kebutuhan input manual lebih lanjut.
 
-Login ke `https://<domain-anda>/login` dengan `admin@sigw.test` / `password123`, lalu:
-
-1. **Ganti password admin**: di Panel Admin → kartu "Pengguna" → baris `admin@sigw.test` → tombol **Reset Password** → catat password sementara yang muncul → logout → login lagi pakai password sementara itu → sistem otomatis mengarahkan ke halaman **Ganti Kata Sandi** → set password pilihan Anda sendiri.
-2. **Perbaiki data sekolah** (belum ada UI untuk ini — lewat SQL langsung):
-   ```bash
-   sudo -u postgres psql -d sigw -c "UPDATE schools SET name = 'Nama Sekolah Anda', npsn = '12345678', address = 'Alamat Sekolah' WHERE name = 'SMP Negeri 1 Contoh';"
-   ```
-3. **Hapus akun & data demo** yang tidak dipakai (4 akun guru demo + 5 murid demo beserta data terkaitnya — aman dihapus, tidak menyentuh akun admin yang sudah Anda perbaiki di langkah 1):
-   ```bash
-   sudo -u postgres psql -d sigw <<'EOF'
-   DELETE FROM students WHERE nisn IN ('0031234561','0031234562','0031234563','0031234564','0031234565');
-   DELETE FROM users WHERE email IN ('guruwali@sigw.test','kepsek@sigw.test','gurubk@sigw.test','walikelas@sigw.test');
-   EOF
-   ```
-4. Kalau sekolah Anda memakai Dapodik, lanjut ke `/dashboard/admin` → kartu **Sinkronisasi Dapodik** untuk menarik data murid/kelas/guru sungguhan (lihat §5.5 ARCHITECTURE.md) — ini akan menggantikan kebutuhan input manual lebih lanjut.
+> **Catatan keamanan**: pendaftaran ini SENGAJA langsung aktif tanpa approval (keputusan produk, lihat ARCHITECTURE.md §3.5 poin 11) — siapa pun yang tahu URL `/register` bisa mendaftarkan sekolah. Kalau ini jadi perhatian (mis. domain Anda publik & ingin dibatasi), pertimbangkan membatasi akses `/register` lewat Nginx (misal `allow`/`deny` IP, atau basic auth sementara) di luar kode aplikasi.
 
 ---
 
